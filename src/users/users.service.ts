@@ -10,10 +10,6 @@ export class UsersService {
 		return this.prismaService.user.findUnique({ where: where });
 	}
 
-	async findOne(where: Prisma.userWhereInput): Promise<user | null> {
-		return this.prismaService.user.findFirst({ where: where });
-	}
-
 	async update(params: {
 		where: Prisma.userWhereUniqueInput;
 		data: Prisma.userUpdateInput;
@@ -25,7 +21,7 @@ export class UsersService {
 		return this.prismaService.user.create({ data });
 	}
 
-	async has(where: Prisma.userWhereUniqueInput): Promise<boolean> {
+	async contains(where: Prisma.userWhereUniqueInput): Promise<boolean> {
 		return (await this.prismaService.user.count({ where })) > 0;
 	}
 }

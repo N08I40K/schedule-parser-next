@@ -1,8 +1,5 @@
 import { Injectable } from "@nestjs/common";
-import {
-	ScheduleParser,
-	ScheduleParseResult,
-} from "./internal/schedule-parser/schedule-parser";
+import { ScheduleParser } from "./internal/schedule-parser/schedule-parser";
 import { BasicXlsDownloader } from "./internal/xls-downloader/basic-xls-downloader";
 import { XlsDownloaderCacheMode } from "./internal/xls-downloader/xls-downloader.base";
 import { ScheduleDto } from "../dto/schedule.dto";

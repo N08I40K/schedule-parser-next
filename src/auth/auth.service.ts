@@ -26,7 +26,7 @@ export class AuthService {
 	) {}
 
 	async signUp(signUpDto: SignUpDto): Promise<SignUpResultDto> {
-		if (await this.usersService.has({ username: signUpDto.username }))
+		if (await this.usersService.contains({ username: signUpDto.username }))
 			throw new ConflictException(
 				"Пользователь с таким именем уже существует!",
 			);
@@ -39,7 +39,7 @@ export class AuthService {
 			username: signUpDto.username,
 			salt: salt,
 			password: await hash(signUpDto.password, salt),
-			access_token: await this.jwtService.signAsync({
+			accessToken: await this.jwtService.signAsync({
 				id: id,
 			}),
 		};
@@ -47,7 +47,7 @@ export class AuthService {
 		return this.usersService.create(input).then((user) => {
 			return {
 				id: user.id,
-				access_token: user.access_token,
+				accessToken: user.accessToken,
 			};
 		});
 	}
@@ -66,21 +66,21 @@ export class AuthService {
 			);
 		}
 
-		const access_token = await this.jwtService.signAsync({ id: user.id });
+		const accessToken = await this.jwtService.signAsync({ id: user.id });
 
 		await this.usersService.update({
 			where: { id: user.id },
-			data: { access_token: access_token },
+			data: { accessToken: accessToken },
 		});
 
-		return { id: user.id, access_token: access_token };
+		return { id: user.id, accessToken: accessToken };
 	}
 
 	async updateToken(
 		updateTokenDto: UpdateTokenDto,
 	): Promise<UpdateTokenResultDto> {
 		if (
-			!(await this.jwtService.verifyAsync(updateTokenDto.access_token, {
+			!(await this.jwtService.verifyAsync(updateTokenDto.accessToken, {
 				ignoreExpiration: true,
 			}))
 		) {
@@ -89,24 +89,24 @@ export class AuthService {
 			);
 		}
 
-		const jwt_user: { id: string } = await this.jwtService.decode(
-			updateTokenDto.access_token,
+		const jwtUser: { id: string } = await this.jwtService.decode(
+			updateTokenDto.accessToken,
 		);
 
-		const user = await this.usersService.findUnique({ id: jwt_user.id });
-		if (!user || user.access_token !== updateTokenDto.access_token) {
+		const user = await this.usersService.findUnique({ id: jwtUser.id });
+		if (!user || user.accessToken !== updateTokenDto.accessToken) {
 			throw new NotFoundException(
 				"Некорректный или недействительный токен!",
 			);
 		}
 
-		const access_token = await this.jwtService.signAsync({ id: user.id });
+		const accessToken = await this.jwtService.signAsync({ id: user.id });
 
 		await this.usersService.update({
 			where: { id: user.id },
-			data: { access_token: access_token },
+			data: { accessToken: accessToken },
 		});
 
-		return { access_token: access_token };
+		return { accessToken: accessToken };
 	}
 }

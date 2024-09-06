@@ -239,10 +239,6 @@ export class ScheduleParser {
 		});
 	}
 
-	public getLastResult(): ScheduleParseResult | null {
-		return this.lastResult;
-	}
-
 	private getAffectedDays(
 		cachedGroup: GroupDto | null,
 		group: GroupDto,

@@ -8,15 +8,12 @@ export class SignInDto extends PickType(UserDto, ["username"]) {
 	password: string;
 }
 
-export class SignInResultDto extends PickType(UserDto, [
-	"id",
-	"access_token",
-]) {}
+export class SignInResultDto extends PickType(UserDto, ["id", "accessToken"]) {}
 
 export class SignUpDto extends SignInDto {}
 
 export class SignUpResultDto extends SignInResultDto {}
 
-export class UpdateTokenDto extends PickType(UserDto, ["access_token"]) {}
+export class UpdateTokenDto extends PickType(UserDto, ["accessToken"]) {}
 
 export class UpdateTokenResultDto extends UpdateTokenDto {}

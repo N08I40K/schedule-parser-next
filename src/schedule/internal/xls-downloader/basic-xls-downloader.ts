@@ -28,11 +28,11 @@ ${response.statusText}`);
 		downloadLink: string;
 		updateDate: string;
 	} {
-		const schedule_block = dom.window.document.getElementById("cont-i");
-		if (schedule_block === null)
+		const scheduleBlock = dom.window.document.getElementById("cont-i");
+		if (scheduleBlock === null)
 			throw new Error("Не удалось найти блок расписаний!");
 
-		const schedules = schedule_block.getElementsByTagName("div");
+		const schedules = scheduleBlock.getElementsByTagName("div");
 		if (schedules === null || schedules.length === 0)
 			throw new Error("Не удалось найти строку с расписанием!");
 
@@ -40,11 +40,11 @@ ${response.statusText}`);
 		const link = poltavskaya.getElementsByTagName("a")[0]!;
 
 		const spans = poltavskaya.getElementsByTagName("span");
-		const update_date = spans[3].textContent!.trimStart();
+		const updateDate = spans[3].textContent!.trimStart();
 
 		return {
 			downloadLink: link.href,
-			updateDate: update_date,
+			updateDate: updateDate,
 		};
 	}
 
@@ -64,9 +64,11 @@ ${response.statusText}`);
 			return this.getCachedXLS();
 
 		const dom = await this.getDOM();
-		const parse_data = this.parseData(dom);
+		const parseData = this.parseData(dom);
 
-		const response = await axios.get(parse_data.downloadLink, {
+		// FIX-ME: Что такое Annotator и почему он выдаёт пустое предупреждение?
+		// noinspection Annotator
+		const response = await axios.get(parseData.downloadLink, {
 			responseType: "arraybuffer",
 		});
 		if (response.status !== 200) {
@@ -77,7 +79,7 @@ ${response.statusText}`);
 
 		const result: XlsDownloaderResult = {
 			fileData: response.data.buffer,
-			updateDate: parse_data.updateDate,
+			updateDate: parseData.updateDate,
 			etag: response.headers["etag"],
 			new:
 				this.cacheMode === XlsDownloaderCacheMode.NONE

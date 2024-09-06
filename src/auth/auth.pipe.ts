@@ -1,5 +1,4 @@
 import {
-	ArgumentMetadata,
 	Injectable,
 	PipeTransform,
 	UnauthorizedException,
@@ -16,12 +15,12 @@ export class UserFromTokenPipe implements PipeTransform {
 	) {}
 
 	async transform(token: string): Promise<user | null> {
-		const jwt_user: { id: string } = await this.jwtService.decode(token);
+		const jwtUser: { id: string } = await this.jwtService.decode(token);
 
-		if (!jwt_user)
+		if (!jwtUser)
 			throw new UnauthorizedException("Передан некорректный токен!");
 
-		const user = await this.usersService.findUnique({ id: jwt_user.id });
+		const user = await this.usersService.findUnique({ id: jwtUser.id });
 		if (!user)
 			throw new UnauthorizedException("Передан некорректный токен!");
 

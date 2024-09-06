@@ -29,7 +29,7 @@ export class AuthGuard implements CanActivate {
 		try {
 			if (
 				!(await this.jwtService.verifyAsync(token)) ||
-				!(await this.usersService.has({ access_token: token }))
+				!(await this.usersService.contains({ accessToken: token }))
 			) {
 				// noinspection ExceptionCaughtLocallyJS
 				throw new Error();

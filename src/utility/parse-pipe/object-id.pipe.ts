@@ -11,10 +11,10 @@ export class ObjectIdPipe implements PipeTransform<any, string> {
 		)
 			throw new BadRequestException("Invalid ObjectId");
 
-		const return_string = value.toLowerCase();
-		if (!/^[0-9a-f]{24}$/.test(return_string))
+		const returnString = value.toLowerCase();
+		if (!/^[0-9a-f]{24}$/.test(returnString))
 			throw new BadRequestException("Invalid ObjectId");
 
-		return return_string;
+		return returnString;
 	}
 }

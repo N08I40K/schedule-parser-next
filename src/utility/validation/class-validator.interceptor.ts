@@ -19,7 +19,7 @@ export class ClassValidatorInterceptor implements NestInterceptor {
 
 	intercept(
 		context: ExecutionContext,
-		next: CallHandler<any>,
+		next: CallHandler,
 	): Observable<any> | Promise<Observable<any>> {
 		return next.handle().pipe(
 			map(async (returnValue: any) => {
@@ -71,6 +71,7 @@ export class ClassValidatorInterceptor implements NestInterceptor {
 	}
 }
 
+// noinspection FunctionNamingConventionJS
 export function ResultDto(type: any) {
 	return (target: NonNullable<unknown>, propertyKey: string | symbol) => {
 		Reflect.defineMetadata("design:result-dto", type, target, propertyKey);

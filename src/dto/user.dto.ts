@@ -24,11 +24,13 @@ export class UserDto {
 	password: string;
 	@ApiProperty({ description: "Последний токен доступа" })
 	@IsJWT()
-	access_token: string;
+	accessToken: string;
 }
 
+// TODO: Доделать пользователей
+// noinspection JSUnusedGlobalSymbols
 export class ClientUserDto extends OmitType(UserDto, [
 	"password",
 	"salt",
-	"access_token",
+	"accessToken",
 ]) {}
