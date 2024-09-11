@@ -1,27 +1,41 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { Prisma, user } from "@prisma/client";
+import { Prisma } from "@prisma/client";
+import { UserDto } from "../dto/user.dto";
 
 @Injectable()
 export class UsersService {
 	constructor(private readonly prismaService: PrismaService) {}
 
-	async findUnique(where: Prisma.userWhereUniqueInput): Promise<user | null> {
-		return this.prismaService.user.findUnique({ where: where });
+	private static convertToDto = (user: UserDto | null) =>
+		user as UserDto | null;
+
+	async findUnique(
+		where: Prisma.UserWhereUniqueInput,
+	): Promise<UserDto | null> {
+		return this.prismaService.user
+			.findUnique({ where: where })
+			.then(UsersService.convertToDto);
 	}
 
 	async update(params: {
-		where: Prisma.userWhereUniqueInput;
-		data: Prisma.userUpdateInput;
-	}): Promise<user | null> {
-		return this.prismaService.user.update(params);
+		where: Prisma.UserWhereUniqueInput;
+		data: Prisma.UserUpdateInput;
+	}): Promise<UserDto | null> {
+		return this.prismaService.user
+			.update(params)
+			.then(UsersService.convertToDto);
 	}
 
-	async create(data: Prisma.userCreateInput): Promise<user> {
-		return this.prismaService.user.create({ data });
+	async create(data: Prisma.UserCreateInput): Promise<UserDto> {
+		return this.prismaService.user
+			.create({ data })
+			.then(UsersService.convertToDto);
 	}
 
-	async contains(where: Prisma.userWhereUniqueInput): Promise<boolean> {
-		return (await this.prismaService.user.count({ where })) > 0;
+	async contains(where: Prisma.UserWhereUniqueInput): Promise<boolean> {
+		return this.prismaService.user
+			.count({ where })
+			.then((count) => count > 0);
 	}
 }

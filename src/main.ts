@@ -4,9 +4,19 @@ import { ValidatorOptions } from "class-validator";
 import { PartialValidationPipe } from "./utility/validation/partial-validation.pipe";
 import { ClassValidatorInterceptor } from "./utility/validation/class-validator.interceptor";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { httpsConstants } from "./contants";
+import * as path from "node:path";
+import * as fs from "node:fs";
 
 async function bootstrap() {
-	const app = await NestFactory.create(AppModule);
+	const app = await NestFactory.create(AppModule, {
+		httpsOptions: {
+			cert: fs.readFileSync(
+				path.join(__dirname, httpsConstants.certPath),
+			),
+			key: fs.readFileSync(path.join(__dirname, httpsConstants.keyPath)),
+		},
+	});
 	const validatorOptions: ValidatorOptions = {
 		enableDebugMessages: true,
 		forbidNonWhitelisted: true,

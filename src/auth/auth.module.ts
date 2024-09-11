@@ -6,6 +6,7 @@ import { AuthController } from "./auth.controller";
 import { UsersModule } from "../users/users.module";
 import { UsersService } from "../users/users.service";
 import { PrismaService } from "../prisma/prisma.service";
+import { ScheduleService } from "../schedule/schedule.service";
 
 @Module({
 	imports: [
@@ -16,7 +17,7 @@ import { PrismaService } from "../prisma/prisma.service";
 			signOptions: { expiresIn: "720h" },
 		}),
 	],
-	providers: [AuthService, UsersService, PrismaService],
+	providers: [AuthService, UsersService, PrismaService, ScheduleService],
 	controllers: [AuthController],
 	exports: [AuthService],
 })

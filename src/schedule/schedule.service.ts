@@ -1,8 +1,19 @@
-import { Injectable } from "@nestjs/common";
-import { ScheduleParser } from "./internal/schedule-parser/schedule-parser";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+	ScheduleParser,
+	ScheduleParseResult,
+} from "./internal/schedule-parser/schedule-parser";
 import { BasicXlsDownloader } from "./internal/xls-downloader/basic-xls-downloader";
 import { XlsDownloaderCacheMode } from "./internal/xls-downloader/xls-downloader.base";
-import { ScheduleDto } from "../dto/schedule.dto";
+import {
+	GroupDto,
+	GroupScheduleDto,
+	ScheduleDto,
+	ScheduleGroupsDto,
+} from "../dto/schedule.dto";
+import { Cache, CACHE_MANAGER } from "@nestjs/cache-manager";
+import { instanceToPlain } from "class-transformer";
+import { cacheGetOrFill } from "../utility/cache.util";
 
 @Injectable()
 export class ScheduleService {
@@ -15,26 +26,86 @@ export class ScheduleService {
 	);
 
 	private lastCacheUpdate: Date = new Date(0);
-	private lastChangedDays: Array<number> = [];
+	private lastChangedDays: Array<Array<number>> = [];
 
-	constructor() {}
+	constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {}
+
+	private async getSourceSchedule(): Promise<ScheduleParseResult> {
+		return cacheGetOrFill(this.cacheManager, "sourceSchedule", async () => {
+			this.lastCacheUpdate = new Date();
+
+			const schedule = await this.scheduleParser.getSchedule();
+			schedule.groups = ScheduleService.toObject(
+				schedule.groups,
+			) as Array<GroupDto>;
+
+			return schedule;
+		});
+	}
+
+	private static toObject<T>(array: Array<T>): object {
+		const object = {};
+
+		for (const item in array) object[item] = array[item];
+
+		return object;
+	}
 
 	async getSchedule(): Promise<ScheduleDto> {
-		const now = new Date();
-		const cacheExpired =
-			(this.lastCacheUpdate.valueOf() - now.valueOf()) / 1000 / 60 > 5;
+		return cacheGetOrFill(this.cacheManager, "schedule", async () => {
+			const sourceSchedule = await this.getSourceSchedule();
 
-		if (cacheExpired) this.lastCacheUpdate = now;
+			for (const groupName in sourceSchedule.affectedDays) {
+				const affectedDays = sourceSchedule.affectedDays[groupName];
 
-		const schedule = await this.scheduleParser.getSchedule(!cacheExpired);
-		if (schedule.affectedDays.length !== 0)
-			this.lastChangedDays = schedule.affectedDays;
+				if (affectedDays?.length !== 0)
+					this.lastChangedDays[groupName] = affectedDays;
+			}
+
+			return {
+				updatedAt: this.lastCacheUpdate,
+				groups: ScheduleService.toObject(sourceSchedule.groups),
+				etag: sourceSchedule.etag,
+				lastChangedDays: this.lastChangedDays,
+			};
+		});
+	}
+
+	async getGroup(group: string): Promise<GroupScheduleDto> {
+		const schedule = await this.getSourceSchedule();
+		console.log(schedule);
+		if ((schedule.groups as object)[group] === undefined) {
+			throw new NotFoundException(
+				"Группы с таким названием не существует!",
+			);
+		}
 
 		return {
 			updatedAt: this.lastCacheUpdate,
-			data: schedule.group,
+			group: schedule.groups[group],
 			etag: schedule.etag,
-			lastChangedDays: this.lastChangedDays,
+			lastChangedDays: this.lastChangedDays[group] ?? [],
 		};
+	}
+
+	async getGroupNames(): Promise<ScheduleGroupsDto> {
+		let groupNames: ScheduleGroupsDto | undefined =
+			await this.cacheManager.get("groupNames");
+
+		if (!groupNames) {
+			const schedule = await this.getSourceSchedule();
+			const names: Array<string> = [];
+
+			for (const groupName in schedule.groups) names.push(groupName);
+
+			groupNames = { names };
+			await this.cacheManager.set(
+				"groupNames",
+				instanceToPlain(groupNames),
+				24 * 60 * 60 * 1000,
+			);
+		}
+
+		return groupNames;
 	}
 }

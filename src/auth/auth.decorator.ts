@@ -3,7 +3,7 @@ import { AuthGuard } from "./auth.guard";
 
 // TODO: Найти применение этой функции
 // noinspection JSUnusedGlobalSymbols
-export const UserId = createParamDecorator((_, context: ExecutionContext) => {
+export const UserToken = createParamDecorator((_, context: ExecutionContext) => {
 	return AuthGuard.extractTokenFromRequest(
 		context.switchToHttp().getRequest(),
 	);

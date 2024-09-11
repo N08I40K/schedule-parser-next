@@ -1,7 +1,6 @@
 import {
 	XlsDownloaderBase,
 	XlsDownloaderCacheMode,
-	XlsDownloaderResult,
 } from "../xls-downloader/xls-downloader.base";
 
 import * as XLSX from "xlsx";
@@ -17,11 +16,11 @@ import { trimAll } from "../../../utility/string.util";
 type InternalId = { row: number; column: number; name: string };
 type InternalDay = InternalId & { lessons: Array<InternalId> };
 
-export type ScheduleParseResult = {
+export class ScheduleParseResult {
 	etag: string;
-	group: GroupDto;
-	affectedDays: Array<number>;
-};
+	groups: Array<GroupDto>;
+	affectedDays: Array<Array<number>>;
+}
 
 export class ScheduleParser {
 	private lastResult: ScheduleParseResult | null = null;
@@ -72,13 +71,13 @@ export class ScheduleParser {
 	}
 
 	parseSkeleton(worksheet: XLSX.Sheet): {
-		groupSkeleton: InternalId;
+		groupSkeletons: Array<InternalId>;
 		daySkeletons: Array<InternalDay>;
 	} {
 		const range = XLSX.utils.decode_range(worksheet["!ref"] || "");
 		let isHeaderParsed: boolean = false;
 
-		let group: InternalId = null;
+		const groups: Array<InternalId> = [];
 		const days: Array<InternalDay> = [];
 
 		for (let row = range.s.r + 1; row <= range.e.r; ++row) {
@@ -99,10 +98,9 @@ export class ScheduleParser {
 						row,
 						column,
 					);
-					if (!groupName || this.group !== groupName) continue;
+					if (!groupName) continue;
 
-					group = { row: row, column: column, name: groupName };
-					break;
+					groups.push({ row: row, column: column, name: groupName });
 				}
 				++row;
 			}
@@ -116,33 +114,27 @@ export class ScheduleParser {
 				break;
 		}
 
-		return { daySkeletons: days, groupSkeleton: group };
+		return { daySkeletons: days, groupSkeletons: groups };
 	}
 
 	async getSchedule(
 		forceCached: boolean = false,
 	): Promise<ScheduleParseResult> {
-		let downloadData: XlsDownloaderResult;
+		if (forceCached && this.lastResult !== null) return this.lastResult;
+
+		const downloadData = await this.xlsDownloader.downloadXLS();
 
 		if (
-			!forceCached ||
-			(downloadData = await this.xlsDownloader.getCachedXLS()) === null
+			!downloadData.new &&
+			this.lastResult &&
+			this.xlsDownloader.getCacheMode() !== XlsDownloaderCacheMode.NONE
 		) {
-			console.debug("Обновление кеша...");
-			downloadData = await this.xlsDownloader.downloadXLS();
+			console.debug(
+				"Так как скачанный XLS не новый, присутствует уже готовый результат и кеширование не отключено...",
+			);
+			console.debug("будет возвращён предыдущий результат.");
 
-			if (
-				!downloadData.new &&
-				this.lastResult &&
-				this.xlsDownloader.getCacheMode() != XlsDownloaderCacheMode.NONE
-			) {
-				console.debug(
-					"Так как скачанный XLS не новый, присутствует уже готовый результат и кеширование не отключено...",
-				);
-				console.debug("будет возвращён предыдущий результат.");
-
-				return this.lastResult;
-			}
+			return this.lastResult;
 		}
 
 		console.debug("Чтение кешированного XLS документа...");
@@ -150,102 +142,115 @@ export class ScheduleParser {
 		const workBook = XLSX.read(downloadData.fileData);
 		const workSheet = workBook.Sheets[workBook.SheetNames[0]];
 
-		const { groupSkeleton, daySkeletons } = this.parseSkeleton(workSheet);
+		const { groupSkeletons, daySkeletons } = this.parseSkeleton(workSheet);
 
-		const group = new GroupDto(groupSkeleton.name);
+		const groups: Array<GroupDto> = [];
 
-		for (let dayIdx = 0; dayIdx < daySkeletons.length - 1; ++dayIdx) {
-			const daySkeleton = daySkeletons[dayIdx];
-			const day = new DayDto(daySkeleton.name);
+		for (const groupSkeleton of groupSkeletons) {
+			const group = new GroupDto(groupSkeleton.name);
 
-			const lessonTimeColumn = daySkeletons[0].column + 1;
-			const rowDistance = daySkeletons[dayIdx + 1].row - daySkeleton.row;
+			for (let dayIdx = 0; dayIdx < daySkeletons.length - 1; ++dayIdx) {
+				const daySkeleton = daySkeletons[dayIdx];
+				const day = new DayDto(daySkeleton.name);
 
-			for (
-				let row = daySkeleton.row;
-				row < daySkeleton.row + rowDistance;
-				++row
-			) {
-				const time = ScheduleParser.getCellName(
-					workSheet,
-					row,
-					lessonTimeColumn,
-				)?.replaceAll(" ", "");
-				if (!time || typeof time !== "string") continue;
+				const lessonTimeColumn = daySkeletons[0].column + 1;
+				const rowDistance =
+					daySkeletons[dayIdx + 1].row - daySkeleton.row;
 
-				const rawName = ScheduleParser.getCellName(
-					workSheet,
-					row,
-					groupSkeleton.column,
-				);
-				const cabinets: Array<string> = [];
-
-				const rawCabinets = String(
-					ScheduleParser.getCellName(
+				for (
+					let row = daySkeleton.row;
+					row < daySkeleton.row + rowDistance;
+					++row
+				) {
+					const time = ScheduleParser.getCellName(
 						workSheet,
 						row,
-						groupSkeleton.column + 1,
-					),
-				);
-				if (rawCabinets !== "null") {
-					const rawLessonCabinetParts = rawCabinets.split(/(\n|\s)/g);
+						lessonTimeColumn,
+					)?.replaceAll(" ", "");
+					if (!time || typeof time !== "string") continue;
 
-					for (const cabinet of rawLessonCabinetParts) {
-						if (
-							cabinet.length === 0 ||
-							cabinet === " " ||
-							cabinet === "\n"
-						)
-							continue;
+					const rawName = ScheduleParser.getCellName(
+						workSheet,
+						row,
+						groupSkeleton.column,
+					);
+					const cabinets: Array<string> = [];
 
-						cabinets.push(cabinet);
+					const rawCabinets = String(
+						ScheduleParser.getCellName(
+							workSheet,
+							row,
+							groupSkeleton.column + 1,
+						),
+					);
+					if (rawCabinets !== "null") {
+						const rawLessonCabinetParts =
+							rawCabinets.split(/(\n|\s)/g);
+
+						for (const cabinet of rawLessonCabinetParts) {
+							if (
+								cabinet.length === 0 ||
+								cabinet === " " ||
+								cabinet === "\n"
+							)
+								continue;
+
+							cabinets.push(cabinet);
+						}
 					}
+
+					if (!rawName || rawName.length === 0) {
+						day.lessons.push(null);
+						continue;
+					}
+
+					const type = time?.includes("пара")
+						? LessonTypeDto.DEFAULT
+						: LessonTypeDto.CUSTOM;
+
+					const { name, teacherFullNames } =
+						this.parseTeacherFullNames(
+							trimAll(rawName?.replace("\n", "") ?? ""),
+						);
+
+					day.lessons.push(
+						new LessonDto(
+							type,
+							LessonTimeDto.fromString(
+								type === LessonTypeDto.DEFAULT
+									? time.substring(5)
+									: time,
+							),
+							name,
+							cabinets,
+							teacherFullNames,
+						),
+					);
 				}
 
-				const type =
-					!rawName || rawName.length === 0
-						? LessonTypeDto.NONE
-						: time?.includes("пара")
-							? LessonTypeDto.DEFAULT
-							: LessonTypeDto.CUSTOM;
+				day.fillIndices();
 
-				const { name, teacherFullNames } = this.parseTeacherFullNames(
-					trimAll(rawName?.replace("\n", "") ?? ""),
-				);
-
-				day.lessons.push(
-					new LessonDto(
-						type,
-						LessonTimeDto.fromString(
-							type === LessonTypeDto.DEFAULT
-								? time.substring(5)
-								: time,
-						),
-						name,
-						cabinets,
-						teacherFullNames,
-					),
-				);
+				if (day.nonNullIndices.length == 0) group.days.push(null);
+				else group.days.push(day);
 			}
 
-			day.fillIndices();
-			group.days.push(day);
+			groups[group.name] = group;
 		}
 
 		return (this.lastResult = {
 			etag: downloadData.etag,
-			group: group,
-			affectedDays: this.getAffectedDays(this.lastResult?.group, group),
+			groups: groups,
+			affectedDays: this.getAffectedDays(this.lastResult?.groups, groups),
 		});
 	}
 
 	private getAffectedDays(
-		cachedGroup: GroupDto | null,
-		group: GroupDto,
-	): Array<number> {
-		const affectedDays: Array<number> = [];
+		cachedGroups: Array<GroupDto> | null,
+		groups: Array<GroupDto>,
+	): Array<Array<number>> {
+		const affectedDays: Array<Array<number>> = [];
 
-		if (!cachedGroup) return affectedDays;
+		if (!cachedGroups) return affectedDays;
 
 		// noinspection SpellCheckingInspection
 		const dayEquals = (lday: DayDto | null, rday: DayDto): boolean => {
@@ -276,14 +281,23 @@ export class ScheduleParser {
 			return true;
 		};
 
-		for (const dayIdx in group.days) {
-			// noinspection SpellCheckingInspection
-			const lday = group.days[dayIdx];
-			// noinspection SpellCheckingInspection
-			const rday = cachedGroup.days[dayIdx];
+		for (const groupName in cachedGroups) {
+			const cachedGroup = cachedGroups[groupName];
+			const group = groups[groupName];
 
-			if (!dayEquals(lday, rday))
-				affectedDays.push(Number.parseInt(dayIdx));
+			const affectedGroupDays: Array<number> = [];
+
+			for (const dayIdx in group.days) {
+				// noinspection SpellCheckingInspection
+				const lday = group.days[dayIdx];
+				// noinspection SpellCheckingInspection
+				const rday = cachedGroup.days[dayIdx];
+
+				if (!dayEquals(lday, rday))
+					affectedGroupDays.push(Number.parseInt(dayIdx));
+			}
+
+			affectedDays[groupName] = affectedGroupDays;
 		}
 
 		return affectedDays;

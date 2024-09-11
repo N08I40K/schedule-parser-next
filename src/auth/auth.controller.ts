@@ -1,4 +1,11 @@
-import { Body, Controller, HttpCode, HttpStatus, Post } from "@nestjs/common";
+import {
+	Body,
+	Controller,
+	HttpCode,
+	HttpStatus,
+	NotFoundException,
+	Post,
+} from "@nestjs/common";
 import { AuthService } from "./auth.service";
 import {
 	ApiBody,
@@ -12,52 +19,66 @@ import {
 	refs,
 } from "@nestjs/swagger";
 import {
-	SignInDto,
-	SignInResultDto,
-	SignUpDto,
-	SignUpResultDto,
+	SignInReqDto,
+	SignInResDto,
+	SignUpReqDto,
+	SignUpResDto,
 	UpdateTokenDto,
 	UpdateTokenResultDto,
 } from "../dto/auth.dto";
 import { ResultDto } from "../utility/validation/class-validator.interceptor";
+import { ScheduleService } from "../schedule/schedule.service";
 
 @Controller("api/v1/auth")
 export class AuthController {
-	constructor(private readonly authService: AuthService) {}
+	constructor(
+		private readonly scheduleService: ScheduleService,
+		private readonly authService: AuthService,
+	) {}
 
-	@ApiExtraModels(SignInDto)
-	@ApiExtraModels(SignInResultDto)
+	@ApiExtraModels(SignInReqDto)
+	@ApiExtraModels(SignInResDto)
 	@ApiOperation({ summary: "Авторизация по логину и паролю", tags: ["auth"] })
-	@ApiBody({ schema: refs(SignInDto)[0] })
+	@ApiBody({ schema: refs(SignInReqDto)[0] })
 	@ApiOkResponse({
 		description: "Авторизация прошла успешно",
-		schema: refs(SignInResultDto)[0],
+		schema: refs(SignInResDto)[0],
 	})
 	@ApiUnauthorizedResponse({
 		description: "Некорректное имя пользователя или пароль",
 	})
-	@ResultDto(SignInResultDto)
+	@ResultDto(SignInResDto)
 	@HttpCode(HttpStatus.OK)
 	@Post("signIn")
-	signIn(@Body() signInDto: SignInDto) {
+	signIn(@Body() signInDto: SignInReqDto) {
 		return this.authService.signIn(signInDto);
 	}
 
-	@ApiExtraModels(SignUpDto)
-	@ApiExtraModels(SignUpResultDto)
+	@ApiExtraModels(SignUpReqDto)
+	@ApiExtraModels(SignUpResDto)
 	@ApiOperation({ summary: "Регистрация по логину и паролю", tags: ["auth"] })
-	@ApiBody({ schema: refs(SignUpDto)[0] })
+	@ApiBody({ schema: refs(SignUpReqDto)[0] })
 	@ApiCreatedResponse({
 		description: "Регистрация прошла успешно",
-		schema: refs(SignUpResultDto)[0],
+		schema: refs(SignUpResDto)[0],
 	})
 	@ApiConflictResponse({
 		description: "Такой пользователь уже существует",
 	})
-	@ResultDto(SignUpResultDto)
+	@ResultDto(SignUpResDto)
 	@HttpCode(HttpStatus.CREATED)
 	@Post("signUp")
-	signUp(@Body() signUpDto: SignUpDto) {
+	async signUp(@Body() signUpDto: SignUpReqDto) {
+		if (
+			!(await this.scheduleService.getGroupNames()).names.includes(
+				signUpDto.group,
+			)
+		) {
+			throw new NotFoundException(
+				"Передано название несуществующей группы",
+			);
+		}
+
 		return this.authService.signUp(signUpDto);
 	}
 

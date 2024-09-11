@@ -4,8 +4,8 @@ import {
 	UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import { user } from "@prisma/client";
 import { UsersService } from "../users/users.service";
+import { UserDto } from "../dto/user.dto";
 
 @Injectable()
 export class UserFromTokenPipe implements PipeTransform {
@@ -14,7 +14,7 @@ export class UserFromTokenPipe implements PipeTransform {
 		private readonly usersService: UsersService,
 	) {}
 
-	async transform(token: string): Promise<user | null> {
+	async transform(token: string): Promise<UserDto> {
 		const jwtUser: { id: string } = await this.jwtService.decode(token);
 
 		if (!jwtUser)
@@ -24,6 +24,6 @@ export class UserFromTokenPipe implements PipeTransform {
 		if (!user)
 			throw new UnauthorizedException("Передан некорректный токен!");
 
-		return user;
+		return user as UserDto;
 	}
 }

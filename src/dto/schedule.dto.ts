@@ -8,8 +8,8 @@ import {
 	IsString,
 	ValidateNested,
 } from "class-validator";
-import { ApiProperty } from "@nestjs/swagger";
-import { Type } from "class-transformer";
+import { ApiProperty, OmitType, PickType } from "@nestjs/swagger";
+import { Transform, Type } from "class-transformer";
 
 export class LessonTimeDto {
 	@ApiProperty({
@@ -49,8 +49,7 @@ export class LessonTimeDto {
 }
 
 export enum LessonTypeDto {
-	NONE = 0,
-	DEFAULT,
+	DEFAULT = 0,
 	CUSTOM,
 }
 
@@ -138,8 +137,9 @@ export class DayDto {
 	@ApiProperty({ example: [], description: "Занятия" })
 	@IsArray()
 	@ValidateNested({ each: true })
+	@IsOptional()
 	@Type(() => LessonDto)
-	lessons: Array<LessonDto>;
+	lessons: Array<LessonDto | null>;
 
 	constructor(name: string) {
 		this.name = name;
@@ -160,7 +160,7 @@ export class DayDto {
 			const lessonIdx = Number.parseInt(lessonRawIdx);
 
 			const lesson = this.lessons[lessonIdx];
-			if (lesson.type === LessonTypeDto.NONE) continue;
+			if (lesson === null) continue;
 
 			this.nonNullIndices.push(lessonIdx);
 
@@ -183,8 +183,9 @@ export class GroupDto {
 	@ApiProperty({ example: [], description: "Дни недели" })
 	@IsArray()
 	@ValidateNested({ each: true })
+	@IsOptional()
 	@Type(() => DayDto)
-	days: Array<DayDto>;
+	days: Array<DayDto | null>;
 
 	constructor(name: string) {
 		this.name = name;
@@ -208,9 +209,48 @@ export class ScheduleDto {
 	@IsString()
 	etag: string;
 
+	@ApiProperty({ description: "Расписание групп" })
+	@IsObject()
+	@IsOptional()
+	groups: any;
+
+	@ApiProperty({
+		example: { "ИС-214/23": [5, 6] },
+		description: "Обновлённые дни с последнего изменения расписания",
+	})
+	@IsObject()
+	@Type(() => Object)
+	@Transform(({ value }) => {
+		const object = {};
+
+		for (const key in value) {
+			object[key] = value[key];
+		}
+
+		return object;
+	})
+	@Type(() => Object)
+	lastChangedDays: Array<Array<number>>;
+}
+
+export class GroupScheduleRequestDto extends PickType(GroupDto, ["name"]) {}
+
+export class ScheduleGroupsDto {
+	@ApiProperty({
+		example: ["ИС-214/23", "ИС-213/23"],
+		description: "Список названий всех групп в текущем расписании",
+	})
+	@IsArray()
+	names: Array<string>;
+}
+
+export class GroupScheduleDto extends OmitType(ScheduleDto, [
+	"groups",
+	"lastChangedDays",
+]) {
 	@ApiProperty({ description: "Расписание группы" })
 	@IsObject()
-	data: GroupDto;
+	group: GroupDto;
 
 	@ApiProperty({
 		example: [5, 6],

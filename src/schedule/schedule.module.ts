@@ -5,7 +5,6 @@ import { UsersService } from "../users/users.service";
 import { PrismaService } from "../prisma/prisma.service";
 
 @Module({
-	imports: [],
 	providers: [ScheduleService, UsersService, PrismaService],
 	controllers: [ScheduleController],
 	exports: [ScheduleService],
