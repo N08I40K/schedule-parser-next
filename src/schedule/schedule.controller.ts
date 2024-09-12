@@ -3,7 +3,8 @@ import {
 	Controller,
 	Get,
 	HttpCode,
-	HttpStatus, Post,
+	HttpStatus,
+	Post,
 	UseGuards,
 } from "@nestjs/common";
 import { AuthGuard } from "../auth/auth.guard";

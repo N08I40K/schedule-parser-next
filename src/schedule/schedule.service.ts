@@ -22,7 +22,6 @@ export class ScheduleService {
 			"https://politehnikum-eng.ru/index/raspisanie_zanjatij/0-409",
 			XlsDownloaderCacheMode.SOFT,
 		),
-		"ИС-214/23",
 	);
 
 	private lastCacheUpdate: Date = new Date(0);
@@ -73,7 +72,7 @@ export class ScheduleService {
 
 	async getGroup(group: string): Promise<GroupScheduleDto> {
 		const schedule = await this.getSourceSchedule();
-		console.log(schedule);
+
 		if ((schedule.groups as object)[group] === undefined) {
 			throw new NotFoundException(
 				"Группы с таким названием не существует!",

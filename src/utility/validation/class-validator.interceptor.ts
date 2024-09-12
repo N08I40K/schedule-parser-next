@@ -32,6 +32,8 @@ export class ClassValidatorInterceptor implements NestInterceptor {
 					handler.name,
 				);
 
+				if (classDto === null) return returnValue;
+
 				if (classDto === undefined) {
 					console.warn(
 						`Undefined DTO type for function \"${cls.name}::${handler.name}\"!`,

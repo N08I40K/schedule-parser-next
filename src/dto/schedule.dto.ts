@@ -56,10 +56,17 @@ export enum LessonTypeDto {
 export class LessonDto {
 	@ApiProperty({
 		example: LessonTypeDto.DEFAULT,
-		description: "Тип занятия.",
+		description: "Тип занятия",
 	})
 	@IsEnum(LessonTypeDto)
 	type: LessonTypeDto;
+
+	@ApiProperty({
+		example: 1,
+		description: "Индекс пары, если присутствует",
+	})
+	@IsNumber()
+	defaultIndex: number;
 
 	@ApiProperty({
 		example: "Элементы высшей математики",
@@ -95,14 +102,16 @@ export class LessonDto {
 
 	constructor(
 		type: LessonTypeDto,
+		defaultIndex: number,
 		time: LessonTimeDto,
 		name: string,
 		cabinets: Array<string>,
 		teacherNames: Array<string>,
 	) {
 		this.type = type;
-		this.name = name;
+		this.defaultIndex = defaultIndex;
 		this.time = time;
+		this.name = name;
 		this.cabinets = cabinets;
 		this.teacherNames = teacherNames;
 	}

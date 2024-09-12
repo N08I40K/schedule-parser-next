@@ -15,28 +15,31 @@ export class AuthGuard implements CanActivate {
 		private readonly jwtService: JwtService,
 	) {}
 
-	public static extractTokenFromRequest(req: Request): string | null {
+	public static extractTokenFromRequest(req: Request): string {
 		const [type, token] = req.headers.authorization?.split(" ") ?? [];
-		return type === "Bearer" ? token : null;
+
+		if (type !== "Bearer" || !token || token.length === 0)
+			throw new UnauthorizedException("Не указан токен!");
+
+		return token;
 	}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
 		const request = context.switchToHttp().getRequest();
 		const token = AuthGuard.extractTokenFromRequest(request);
 
-		if (!token) throw new UnauthorizedException("Не указан токен!");
-
-		try {
-			if (
-				!(await this.jwtService.verifyAsync(token)) ||
-				!(await this.usersService.contains({ accessToken: token }))
-			) {
-				// noinspection ExceptionCaughtLocallyJS
-				throw new Error();
+		if (!token)
+			try {
+				if (
+					!(await this.jwtService.verifyAsync(token)) ||
+					!(await this.usersService.contains({ accessToken: token }))
+				) {
+					// noinspection ExceptionCaughtLocallyJS
+					throw new Error();
+				}
+			} catch {
+				throw new UnauthorizedException("Указан неверный токен!");
 			}
-		} catch {
-			throw new UnauthorizedException("Указан неверный токен!");
-		}
 
 		return true;
 	}

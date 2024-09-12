@@ -1,6 +1,7 @@
 import { ApiProperty, IntersectionType, PickType } from "@nestjs/swagger";
 import { UserDto } from "./user.dto";
 import { IsString } from "class-validator";
+import { Expose } from "class-transformer";
 
 // SignIn
 export class SignInReqDto extends PickType(UserDto, ["username"]) {
@@ -20,6 +21,25 @@ export class SignUpReqDto extends IntersectionType(
 export class SignUpResDto extends SignInResDto {}
 
 // Update token
-export class UpdateTokenDto extends PickType(UserDto, ["accessToken"]) {}
+export class UpdateTokenReqDto extends PickType(UserDto, ["accessToken"]) {}
 
-export class UpdateTokenResultDto extends UpdateTokenDto {}
+export class UpdateTokenResDto extends UpdateTokenReqDto {}
+
+// Update password
+export class ChangePasswordReqDto {
+	@ApiProperty({
+		example: "my-old-password",
+		description: "Старый пароль",
+	})
+	@IsString()
+	@Expose()
+	oldPassword: string;
+
+	@ApiProperty({
+		example: "my-new-password",
+		description: "Новый пароль",
+	})
+	@IsString()
+	@Expose()
+	newPassword: string;
+}

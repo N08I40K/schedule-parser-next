@@ -3,7 +3,6 @@ import {
 	Get,
 	HttpCode,
 	HttpStatus,
-	NotFoundException,
 	UseGuards,
 } from "@nestjs/common";
 import { AuthGuard } from "../auth/auth.guard";
@@ -22,8 +21,6 @@ export class UsersController {
 	@Get("me")
 	async getMe(@UserToken() token: string): Promise<ClientUserDto> {
 		const userDto = await this.authService.decodeUserToken(token);
-		if (!userDto)
-			throw new NotFoundException("Не удалось найти пользователя!");
 
 		return ClientUserDto.fromUserDto(userDto);
 	}

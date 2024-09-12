@@ -25,10 +25,7 @@ export class ScheduleParseResult {
 export class ScheduleParser {
 	private lastResult: ScheduleParseResult | null = null;
 
-	public constructor(
-		private readonly xlsDownloader: XlsDownloaderBase,
-		private readonly group: string,
-	) {}
+	public constructor(private readonly xlsDownloader: XlsDownloaderBase) {}
 
 	private static getCellName(
 		worksheet: XLSX.Sheet,
@@ -162,14 +159,14 @@ export class ScheduleParser {
 					row < daySkeleton.row + rowDistance;
 					++row
 				) {
-					const time = ScheduleParser.getCellName(
+					const time: string | null = ScheduleParser.getCellName(
 						workSheet,
 						row,
 						lessonTimeColumn,
 					)?.replaceAll(" ", "");
 					if (!time || typeof time !== "string") continue;
 
-					const rawName = ScheduleParser.getCellName(
+					const rawName: string | null = ScheduleParser.getCellName(
 						workSheet,
 						row,
 						groupSkeleton.column,
@@ -216,6 +213,9 @@ export class ScheduleParser {
 					day.lessons.push(
 						new LessonDto(
 							type,
+							type === LessonTypeDto.DEFAULT
+								? Number.parseInt(time[0])
+								: -1,
 							LessonTimeDto.fromString(
 								type === LessonTypeDto.DEFAULT
 									? time.substring(5)

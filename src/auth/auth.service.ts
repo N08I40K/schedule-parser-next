@@ -11,8 +11,9 @@ import {
 	SignInResDto,
 	SignUpReqDto,
 	SignUpResDto,
-	UpdateTokenDto,
-	UpdateTokenResultDto,
+	ChangePasswordReqDto,
+	UpdateTokenReqDto,
+	UpdateTokenResDto,
 } from "../dto/auth.dto";
 import { UsersService } from "../users/users.service";
 import { genSalt, hash } from "bcrypt";
@@ -27,13 +28,30 @@ export class AuthService {
 		private readonly jwtService: JwtService,
 	) {}
 
-	async decodeUserToken(token: string): Promise<UserDto | null> {
-		const jwtUser: { id: string } =
+	async decodeUserToken(token: string): Promise<UserDto> {
+		const jwtUser: { id: string } | null =
 			await this.jwtService.verifyAsync(token);
 
-		return this.usersService
+		if (jwtUser === null) {
+			throw new UnauthorizedException(
+				"Некорректный или недействительный токен",
+			);
+		}
+
+		const user = await this.usersService
 			.findUnique({ id: jwtUser.id })
 			.then((user) => user as UserDto | null);
+
+		if (!user)
+			throw new UnauthorizedException("Не удалось найти пользователя!");
+
+		if (user.accessToken !== token) {
+			throw new UnauthorizedException(
+				"Некорректный или недействительный токен",
+			);
+		}
+
+		return user as UserDto;
 	}
 
 	async signUp(signUpDto: SignUpReqDto): Promise<SignUpResDto> {
@@ -99,8 +117,8 @@ export class AuthService {
 	}
 
 	async updateToken(
-		updateTokenDto: UpdateTokenDto,
-	): Promise<UpdateTokenResultDto> {
+		updateTokenDto: UpdateTokenReqDto,
+	): Promise<UpdateTokenResDto> {
 		if (
 			!(await this.jwtService.verifyAsync(updateTokenDto.accessToken, {
 				ignoreExpiration: true,
@@ -130,5 +148,25 @@ export class AuthService {
 		});
 
 		return { accessToken: accessToken };
+	}
+
+	async changePassword(
+		user: UserDto,
+		changePasswordReqDto: ChangePasswordReqDto,
+	): Promise<void> {
+		const { oldPassword, newPassword } = changePasswordReqDto;
+
+		if (oldPassword == newPassword)
+			throw new ConflictException("Пароли идентичны");
+
+		if (user.password !== (await hash(oldPassword, user.salt)))
+			throw new UnauthorizedException("Передан неверный исходный пароль");
+
+		await this.usersService.update({
+			where: { id: user.id },
+			data: {
+				password: await hash(newPassword, user.salt),
+			},
+		});
 	}
 }

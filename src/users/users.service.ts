@@ -21,7 +21,7 @@ export class UsersService {
 	async update(params: {
 		where: Prisma.UserWhereUniqueInput;
 		data: Prisma.UserUpdateInput;
-	}): Promise<UserDto | null> {
+	}): Promise<UserDto> {
 		return this.prismaService.user
 			.update(params)
 			.then(UsersService.convertToDto);
