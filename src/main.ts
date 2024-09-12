@@ -4,7 +4,7 @@ import { ValidatorOptions } from "class-validator";
 import { PartialValidationPipe } from "./utility/validation/partial-validation.pipe";
 import { ClassValidatorInterceptor } from "./utility/validation/class-validator.interceptor";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-import { httpsConstants } from "./contants";
+import { apiConstants, httpsConstants } from "./contants";
 import * as path from "node:path";
 import * as fs from "node:fs";
 
@@ -40,7 +40,7 @@ async function bootstrap() {
 	];
 	SwaggerModule.setup("api-docs", app, swaggerDocument);
 
-	await app.listen(43373);
+	await app.listen(apiConstants.port);
 }
 
 bootstrap().then();
