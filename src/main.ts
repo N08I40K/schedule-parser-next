@@ -40,7 +40,7 @@ async function bootstrap() {
 	];
 	SwaggerModule.setup("api-docs", app, swaggerDocument);
 
-	await app.listen(3000);
+	await app.listen(43373);
 }
 
 bootstrap().then();
