@@ -1,4 +1,4 @@
-import { ApiProperty, OmitType } from "@nestjs/swagger";
+import { ApiProperty, OmitType, PickType } from "@nestjs/swagger";
 import {
 	IsEnum,
 	IsJWT,
@@ -16,7 +16,10 @@ export enum UserRoleDto {
 }
 
 export class UserDto {
-	@ApiProperty({ description: "Идентификатор (ObjectId)" })
+	@ApiProperty({
+		example: "66e1b7e255c5d5f1268cce90",
+		description: "Идентификатор (ObjectId)",
+	})
 	@IsMongoId()
 	@Expose()
 	id: string;
@@ -66,14 +69,20 @@ export class UserDto {
 	role: UserRoleDto;
 }
 
-export class ClientUserDto extends OmitType(UserDto, [
+export class ClientUserResDto extends OmitType(UserDto, [
 	"password",
 	"salt",
 	"accessToken",
 ]) {
-	static fromUserDto(userDto: UserDto): ClientUserDto {
-		return plainToClass(ClientUserDto, userDto, {
+	static fromUserDto(userDto: UserDto): ClientUserResDto {
+		return plainToClass(ClientUserResDto, userDto, {
 			excludeExtraneousValues: true,
 		});
 	}
 }
+
+// changes
+
+export class ChangeUsernameReqDto extends PickType(UserDto, ["username"]) {}
+
+export class ChangeGroupReqDto extends PickType(UserDto, ["group"]) {}

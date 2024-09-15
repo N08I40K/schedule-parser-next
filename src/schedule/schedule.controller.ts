@@ -54,7 +54,7 @@ export class ScheduleController {
 	@ApiNotFoundResponse({ description: "Требуемая группа не найдена" })
 	@ResultDto(GroupScheduleDto)
 	@HttpCode(HttpStatus.OK)
-	@Post("getGroup")
+	@Post("get-group")
 	getGroupSchedule(
 		@Body() groupDto: GroupScheduleRequestDto,
 	): Promise<GroupScheduleDto> {
@@ -73,7 +73,7 @@ export class ScheduleController {
 	@ApiNotFoundResponse({ description: "Требуемая группа не найдена" })
 	@ResultDto(ScheduleGroupsDto)
 	@HttpCode(HttpStatus.OK)
-	@Get("getGroupNames")
+	@Get("get-group-names")
 	async getGroupNames(): Promise<ScheduleGroupsDto> {
 		return this.scheduleService.getGroupNames();
 	}

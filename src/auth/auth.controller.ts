@@ -51,7 +51,7 @@ export class AuthController {
 	})
 	@ResultDto(SignInResDto)
 	@HttpCode(HttpStatus.OK)
-	@Post("signIn")
+	@Post("sign-in")
 	signIn(@Body() signInDto: SignInReqDto) {
 		return this.authService.signIn(signInDto);
 	}
@@ -69,7 +69,7 @@ export class AuthController {
 	})
 	@ResultDto(SignUpResDto)
 	@HttpCode(HttpStatus.CREATED)
-	@Post("signUp")
+	@Post("sign-up")
 	async signUp(@Body() signUpDto: SignUpReqDto) {
 		if (
 			!(await this.scheduleService.getGroupNames()).names.includes(
@@ -88,7 +88,7 @@ export class AuthController {
 	@ApiExtraModels(UpdateTokenResDto)
 	@ApiOperation({
 		summary: "Обновление просроченного токена",
-		tags: ["auth", "accessToken"],
+		tags: ["auth", "access-token"],
 	})
 	@ApiBody({ schema: refs(UpdateTokenReqDto)[0] })
 	@ApiOkResponse({
@@ -100,7 +100,7 @@ export class AuthController {
 	})
 	@ResultDto(UpdateTokenResDto)
 	@HttpCode(HttpStatus.OK)
-	@Post("updateToken")
+	@Post("update-token")
 	updateToken(
 		@Body() updateTokenDto: UpdateTokenReqDto,
 	): Promise<UpdateTokenResDto> {
@@ -121,7 +121,7 @@ export class AuthController {
 	})
 	@ResultDto(null)
 	@HttpCode(HttpStatus.OK)
-	@Post("changePassword")
+	@Post("change-password")
 	async changePassword(
 		@Body() changePasswordReqDto: ChangePasswordReqDto,
 		@UserToken() userToken: string,

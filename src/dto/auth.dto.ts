@@ -5,7 +5,10 @@ import { Expose } from "class-transformer";
 
 // SignIn
 export class SignInReqDto extends PickType(UserDto, ["username"]) {
-	@ApiProperty({ description: "Пароль в исходном виде" })
+	@ApiProperty({
+		example: "my-password",
+		description: "Пароль в исходном виде",
+	})
 	@IsString()
 	password: string;
 }
