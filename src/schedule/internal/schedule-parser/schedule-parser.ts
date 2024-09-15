@@ -253,11 +253,11 @@ export class ScheduleParser {
 		if (!cachedGroups) return affectedDays;
 
 		// noinspection SpellCheckingInspection
-		const dayEquals = (lday: DayDto | null, rday: DayDto): boolean => {
-			if (
-				rday === undefined ||
-				rday.lessons.length != lday.lessons.length
-			)
+		const dayEquals = (
+			lday: DayDto | null,
+			rday: DayDto | undefined,
+		): boolean => {
+			if (!lday || !rday || rday.lessons.length != lday.lessons.length)
 				return false;
 
 			for (const lessonIdx in lday.lessons) {
