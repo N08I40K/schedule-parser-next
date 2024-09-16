@@ -1,4 +1,9 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+	Inject,
+	Injectable,
+	NotFoundException,
+	ServiceUnavailableException,
+} from "@nestjs/common";
 import {
 	ScheduleParser,
 	ScheduleParseResult,
@@ -10,6 +15,7 @@ import {
 	GroupScheduleDto,
 	ScheduleDto,
 	ScheduleGroupsDto,
+	SiteMainPageDto,
 } from "../dto/schedule.dto";
 import { Cache, CACHE_MANAGER } from "@nestjs/cache-manager";
 import { instanceToPlain } from "class-transformer";
@@ -37,6 +43,11 @@ export class ScheduleService {
 			schedule.groups = ScheduleService.toObject(
 				schedule.groups,
 			) as Array<GroupDto>;
+
+			if (schedule.updateRequired && schedule.etag.length === 0)
+				throw new ServiceUnavailableException(
+					"Отсутствует начальная ссылка на скачивание!",
+				);
 
 			return schedule;
 		});
@@ -66,6 +77,7 @@ export class ScheduleService {
 				groups: ScheduleService.toObject(sourceSchedule.groups),
 				etag: sourceSchedule.etag,
 				lastChangedDays: this.lastChangedDays,
+				updateRequired: sourceSchedule.updateRequired,
 			};
 		});
 	}
@@ -84,6 +96,7 @@ export class ScheduleService {
 			group: schedule.groups[group],
 			etag: schedule.etag,
 			lastChangedDays: this.lastChangedDays[group] ?? [],
+			updateRequired: schedule.updateRequired,
 		};
 	}
 
@@ -106,5 +119,13 @@ export class ScheduleService {
 		}
 
 		return groupNames;
+	}
+
+	async updateSiteMainPage(siteMainPageDto: SiteMainPageDto): Promise<void> {
+		await this.scheduleParser
+			.getXlsDownloader()
+			.setPreparedData(siteMainPageDto.mainPage);
+
+		await this.cacheManager.reset();
 	}
 }

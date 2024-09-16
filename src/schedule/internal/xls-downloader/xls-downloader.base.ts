@@ -3,6 +3,7 @@ export type XlsDownloaderResult = {
 	updateDate: string;
 	etag: string;
 	new: boolean;
+	updateRequired: boolean;
 };
 
 export enum XlsDownloaderCacheMode {
@@ -20,6 +21,10 @@ export abstract class XlsDownloaderBase {
 	public abstract downloadXLS(): Promise<XlsDownloaderResult>;
 
 	public abstract getCachedXLS(): Promise<XlsDownloaderResult | null>;
+
+	public abstract isUpdateRequired(): boolean;
+
+	public abstract setPreparedData(preparedData: string): Promise<void>;
 
 	public getCacheMode(): XlsDownloaderCacheMode {
 		return this.cacheMode;

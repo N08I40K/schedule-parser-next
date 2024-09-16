@@ -14,10 +14,12 @@ import {
 	GroupScheduleRequestDto,
 	ScheduleDto,
 	ScheduleGroupsDto,
+	SiteMainPageDto,
 } from "../dto/schedule.dto";
 import { ResultDto } from "../utility/validation/class-validator.interceptor";
 import {
 	ApiExtraModels,
+	ApiNotAcceptableResponse,
 	ApiNotFoundResponse,
 	ApiOkResponse,
 	ApiOperation,
@@ -38,8 +40,8 @@ export class ScheduleController {
 	@ResultDto(ScheduleDto)
 	@HttpCode(HttpStatus.OK)
 	@Get("get")
-	getSchedule(): Promise<ScheduleDto> {
-		return this.scheduleService.getSchedule();
+	async getSchedule(): Promise<ScheduleDto> {
+		return await this.scheduleService.getSchedule();
 	}
 
 	@ApiExtraModels(GroupScheduleDto)
@@ -55,10 +57,10 @@ export class ScheduleController {
 	@ResultDto(GroupScheduleDto)
 	@HttpCode(HttpStatus.OK)
 	@Post("get-group")
-	getGroupSchedule(
+	async getGroupSchedule(
 		@Body() groupDto: GroupScheduleRequestDto,
 	): Promise<GroupScheduleDto> {
-		return this.scheduleService.getGroup(groupDto.name);
+		return await this.scheduleService.getGroup(groupDto.name);
 	}
 
 	@ApiExtraModels(ScheduleGroupsDto)
@@ -75,6 +77,24 @@ export class ScheduleController {
 	@HttpCode(HttpStatus.OK)
 	@Get("get-group-names")
 	async getGroupNames(): Promise<ScheduleGroupsDto> {
-		return this.scheduleService.getGroupNames();
+		return await this.scheduleService.getGroupNames();
+	}
+
+	@ApiExtraModels(SiteMainPageDto)
+	@ApiOperation({
+		summary: "Обновление данных основной страницы политехникума",
+		tags: ["schedule"],
+	})
+	@ApiOkResponse({ description: "Данные обновлены успешно" })
+	@ApiNotAcceptableResponse({
+		description: "Передан некорректный код страницы",
+	})
+	@ResultDto(null)
+	@HttpCode(HttpStatus.OK)
+	@Post("update-site-main-page")
+	async updateSiteMainPage(
+		@Body() siteMainPageDto: SiteMainPageDto,
+	): Promise<void> {
+		return await this.scheduleService.updateSiteMainPage(siteMainPageDto);
 	}
 }

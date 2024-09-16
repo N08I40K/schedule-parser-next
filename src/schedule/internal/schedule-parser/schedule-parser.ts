@@ -20,6 +20,7 @@ export class ScheduleParseResult {
 	etag: string;
 	groups: Array<GroupDto>;
 	affectedDays: Array<Array<number>>;
+	updateRequired: boolean;
 }
 
 export class ScheduleParser {
@@ -114,12 +115,25 @@ export class ScheduleParser {
 		return { daySkeletons: days, groupSkeletons: groups };
 	}
 
+	getXlsDownloader(): XlsDownloaderBase {
+		return this.xlsDownloader;
+	}
+
 	async getSchedule(
 		forceCached: boolean = false,
 	): Promise<ScheduleParseResult> {
 		if (forceCached && this.lastResult !== null) return this.lastResult;
 
 		const downloadData = await this.xlsDownloader.downloadXLS();
+
+		if (downloadData.updateRequired && downloadData.etag.length === 0) {
+			return {
+				updateRequired: true,
+				groups: [],
+				etag: "",
+				affectedDays: [],
+			};
+		}
 
 		if (
 			!downloadData.new &&
@@ -241,6 +255,7 @@ export class ScheduleParser {
 			etag: downloadData.etag,
 			groups: groups,
 			affectedDays: this.getAffectedDays(this.lastResult?.groups, groups),
+			updateRequired: downloadData.updateRequired,
 		});
 	}
 

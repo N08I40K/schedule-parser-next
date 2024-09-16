@@ -1,5 +1,7 @@
 import {
 	IsArray,
+	IsBase64,
+	IsBoolean,
 	IsDate,
 	IsEnum,
 	IsNumber,
@@ -240,6 +242,14 @@ export class ScheduleDto {
 	})
 	@Type(() => Object)
 	lastChangedDays: Array<Array<number>>;
+
+	@ApiProperty({
+		example: false,
+		description:
+			"Требуется ли пользовательское обновление ссылки для скачивания расписания",
+	})
+	@IsBoolean()
+	updateRequired: boolean;
 }
 
 export class GroupScheduleRequestDto extends PickType(GroupDto, ["name"]) {}
@@ -269,4 +279,21 @@ export class GroupScheduleDto extends OmitType(ScheduleDto, [
 	@ValidateNested({ each: true })
 	@Type(() => Number)
 	lastChangedDays: Array<number>;
+
+	@ApiProperty({
+		example: false,
+		description:
+			"Требуется ли пользовательское обновление ссылки для скачивания расписания",
+	})
+	@IsBoolean()
+	updateRequired: boolean;
+}
+
+export class SiteMainPageDto {
+	@ApiProperty({
+		example: "<div></div>",
+		description: "Код страницы политехникума для скачивания",
+	})
+	@IsBase64()
+	mainPage: string;
 }
