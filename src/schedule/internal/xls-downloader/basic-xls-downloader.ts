@@ -5,7 +5,10 @@ import {
 } from "./xls-downloader.base";
 import axios from "axios";
 import { JSDOM } from "jsdom";
-import { NotAcceptableException } from "@nestjs/common";
+import {
+	NotAcceptableException,
+	ServiceUnavailableException,
+} from "@nestjs/common";
 
 export class BasicXlsDownloader extends XlsDownloaderBase {
 	cache: XlsDownloaderResult | null = null;
@@ -85,13 +88,9 @@ export class BasicXlsDownloader extends XlsDownloaderBase {
 			return this.getCachedXLS();
 
 		if (!this.preparedData) {
-			return {
-				updateRequired: true,
-				etag: "",
-				new: true,
-				fileData: new ArrayBuffer(1),
-				updateDate: "",
-			};
+			throw new ServiceUnavailableException(
+				"Отсутствует начальная ссылка на скачивание!",
+			);
 		}
 
 		// noinspection Annotator

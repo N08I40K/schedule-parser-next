@@ -14,7 +14,7 @@ import {
 import { toNormalString, trimAll } from "../../../utility/string.util";
 
 type InternalId = { row: number; column: number; name: string };
-type InternalDay = InternalId & { lessons: Array<InternalId> };
+type InternalDay = InternalId;
 
 export class ScheduleParseResult {
 	etag: string;
@@ -107,7 +107,17 @@ export class ScheduleParser {
 				++row;
 			}
 
-			days.push({ row: row, column: 0, name: dayName, lessons: [] });
+			const dayMonthIdx = /[А-Яа-я]+\s(\d+)\.\d+\.\d+/.exec(
+				trimAll(dayName),
+			);
+
+			if (dayMonthIdx === null) continue;
+
+			days.push({
+				row: row,
+				column: 0,
+				name: dayName,
+			});
 
 			if (
 				days.length > 2 &&
@@ -130,15 +140,6 @@ export class ScheduleParser {
 
 		const downloadData = await this.xlsDownloader.downloadXLS();
 
-		if (downloadData.updateRequired && downloadData.etag.length === 0) {
-			return {
-				updateRequired: true,
-				groups: [],
-				etag: "",
-				affectedDays: [],
-			};
-		}
-
 		if (
 			!downloadData.new &&
 			this.lastResult &&
@@ -151,8 +152,6 @@ export class ScheduleParser {
 
 			return this.lastResult;
 		}
-
-		console.debug("Чтение кешированного XLS документа...");
 
 		const workBook = XLSX.read(downloadData.fileData);
 		const workSheet = workBook.Sheets[workBook.SheetNames[0]];

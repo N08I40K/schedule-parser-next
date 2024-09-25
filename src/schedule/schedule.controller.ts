@@ -10,6 +10,7 @@ import {
 import { AuthGuard } from "../auth/auth.guard";
 import { ScheduleService } from "./schedule.service";
 import {
+	CacheStatusDto,
 	GroupScheduleDto,
 	GroupScheduleRequestDto,
 	ScheduleDto,
@@ -96,5 +97,18 @@ export class ScheduleController {
 		@Body() siteMainPageDto: SiteMainPageDto,
 	): Promise<void> {
 		return await this.scheduleService.updateSiteMainPage(siteMainPageDto);
+	}
+
+	@ApiExtraModels(CacheStatusDto)
+	@ApiOperation({
+		summary: "Получение информации о кеше",
+		tags: ["schedule", "cache"],
+	})
+	@ApiOkResponse({ description: "Получение данных прошло успешно" })
+	@ResultDto(CacheStatusDto)
+	@HttpCode(HttpStatus.OK)
+	@Get("cache-status")
+	getCacheStatus(): CacheStatusDto {
+		return this.scheduleService.getCacheStatus();
 	}
 }

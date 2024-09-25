@@ -4,6 +4,7 @@ import {
 	IsBoolean,
 	IsDate,
 	IsEnum,
+	IsHash,
 	IsNumber,
 	IsObject,
 	IsOptional,
@@ -204,6 +205,22 @@ export class GroupDto {
 	}
 }
 
+export class CacheStatusDto {
+	@ApiProperty({
+		example: true,
+		description: "Нужно ли обновить ссылку для скачивания xls?",
+	})
+	@IsBoolean()
+	cacheUpdateRequired: boolean;
+
+	@ApiProperty({
+		example: "e6ff169b01608addf998dbf8f40b019a7f514239",
+		description: "Хеш последних полученных данных",
+	})
+	@IsHash("sha1")
+	cacheHash: string;
+}
+
 export class ScheduleDto {
 	@ApiProperty({
 		example: new Date(),
@@ -212,13 +229,6 @@ export class ScheduleDto {
 	})
 	@IsDate()
 	updatedAt: Date;
-
-	@ApiProperty({
-		example: '"66d88751-1b800"',
-		description: "ETag файла с расписанием на сервере политехникума",
-	})
-	@IsString()
-	etag: string;
 
 	@ApiProperty({ description: "Расписание групп" })
 	@IsObject()
@@ -242,14 +252,6 @@ export class ScheduleDto {
 	})
 	@Type(() => Object)
 	lastChangedDays: Array<Array<number>>;
-
-	@ApiProperty({
-		example: false,
-		description:
-			"Требуется ли пользовательское обновление ссылки для скачивания расписания",
-	})
-	@IsBoolean()
-	updateRequired: boolean;
 }
 
 export class GroupScheduleRequestDto extends PickType(GroupDto, ["name"]) {}
@@ -279,20 +281,12 @@ export class GroupScheduleDto extends OmitType(ScheduleDto, [
 	@ValidateNested({ each: true })
 	@Type(() => Number)
 	lastChangedDays: Array<number>;
-
-	@ApiProperty({
-		example: false,
-		description:
-			"Требуется ли пользовательское обновление ссылки для скачивания расписания",
-	})
-	@IsBoolean()
-	updateRequired: boolean;
 }
 
 export class SiteMainPageDto {
 	@ApiProperty({
-		example: "<div></div>",
-		description: "Код страницы политехникума для скачивания",
+		example: "MHz=",
+		description: "Страница политехникума",
 	})
 	@IsBase64()
 	mainPage: string;

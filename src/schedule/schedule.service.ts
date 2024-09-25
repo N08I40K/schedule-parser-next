@@ -1,9 +1,4 @@
-import {
-	Inject,
-	Injectable,
-	NotFoundException,
-	ServiceUnavailableException,
-} from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import {
 	ScheduleParser,
 	ScheduleParseResult,
@@ -11,6 +6,7 @@ import {
 import { BasicXlsDownloader } from "./internal/xls-downloader/basic-xls-downloader";
 import { XlsDownloaderCacheMode } from "./internal/xls-downloader/xls-downloader.base";
 import {
+	CacheStatusDto,
 	GroupDto,
 	GroupScheduleDto,
 	ScheduleDto,
@@ -20,6 +16,7 @@ import {
 import { Cache, CACHE_MANAGER } from "@nestjs/cache-manager";
 import { instanceToPlain } from "class-transformer";
 import { cacheGetOrFill } from "../utility/cache.util";
+import * as crypto from "crypto";
 
 @Injectable()
 export class ScheduleService {
@@ -30,24 +27,33 @@ export class ScheduleService {
 		),
 	);
 
-	private lastCacheUpdate: Date = new Date(0);
+	private cacheUpdatedAt: Date = new Date(0);
+	private cacheHash: string = "0000000000000000000000000000000000000000";
+
 	private lastChangedDays: Array<Array<number>> = [];
 
 	constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {}
 
+	getCacheStatus(): CacheStatusDto {
+		return {
+			cacheHash: this.cacheHash,
+			cacheUpdateRequired:
+				(Date.now() - this.cacheUpdatedAt.valueOf()) / 1000 / 60 >= 5,
+		};
+	}
+
 	private async getSourceSchedule(): Promise<ScheduleParseResult> {
 		return cacheGetOrFill(this.cacheManager, "sourceSchedule", async () => {
-			this.lastCacheUpdate = new Date();
-
 			const schedule = await this.scheduleParser.getSchedule();
 			schedule.groups = ScheduleService.toObject(
 				schedule.groups,
 			) as Array<GroupDto>;
 
-			if (schedule.updateRequired && schedule.etag.length === 0)
-				throw new ServiceUnavailableException(
-					"Отсутствует начальная ссылка на скачивание!",
-				);
+			this.cacheUpdatedAt = new Date();
+			this.cacheHash = crypto
+				.createHash("sha1")
+				.update(schedule.etag)
+				.digest("hex");
 
 			return schedule;
 		});
@@ -62,24 +68,26 @@ export class ScheduleService {
 	}
 
 	async getSchedule(): Promise<ScheduleDto> {
-		return cacheGetOrFill(this.cacheManager, "schedule", async () => {
-			const sourceSchedule = await this.getSourceSchedule();
+		return cacheGetOrFill(
+			this.cacheManager,
+			"schedule",
+			async (): Promise<ScheduleDto> => {
+				const sourceSchedule = await this.getSourceSchedule();
 
-			for (const groupName in sourceSchedule.affectedDays) {
-				const affectedDays = sourceSchedule.affectedDays[groupName];
+				for (const groupName in sourceSchedule.affectedDays) {
+					const affectedDays = sourceSchedule.affectedDays[groupName];
 
-				if (affectedDays?.length !== 0)
-					this.lastChangedDays[groupName] = affectedDays;
-			}
+					if (affectedDays?.length !== 0)
+						this.lastChangedDays[groupName] = affectedDays;
+				}
 
-			return {
-				updatedAt: this.lastCacheUpdate,
-				groups: ScheduleService.toObject(sourceSchedule.groups),
-				etag: sourceSchedule.etag,
-				lastChangedDays: this.lastChangedDays,
-				updateRequired: sourceSchedule.updateRequired,
-			};
-		});
+				return {
+					updatedAt: this.cacheUpdatedAt,
+					groups: ScheduleService.toObject(sourceSchedule.groups),
+					lastChangedDays: this.lastChangedDays,
+				};
+			},
+		);
 	}
 
 	async getGroup(group: string): Promise<GroupScheduleDto> {
@@ -92,11 +100,9 @@ export class ScheduleService {
 		}
 
 		return {
-			updatedAt: this.lastCacheUpdate,
+			updatedAt: this.cacheUpdatedAt,
 			group: schedule.groups[group],
-			etag: schedule.etag,
 			lastChangedDays: this.lastChangedDays[group] ?? [],
-			updateRequired: schedule.updateRequired,
 		};
 	}
 
@@ -127,5 +133,6 @@ export class ScheduleService {
 			.setPreparedData(siteMainPageDto.mainPage);
 
 		await this.cacheManager.reset();
+		await this.getSourceSchedule();
 	}
 }
