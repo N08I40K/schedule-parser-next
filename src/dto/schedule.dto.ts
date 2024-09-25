@@ -33,7 +33,7 @@ export class LessonTimeDto {
 	}
 
 	static fromString(time: string): LessonTimeDto {
-		time = time.replaceAll(".", ":");
+		time = time.trim().replaceAll(".", ":");
 
 		const regex = /(\d+:\d+)-(\d+:\d+)/g;
 

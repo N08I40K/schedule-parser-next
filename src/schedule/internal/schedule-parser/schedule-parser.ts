@@ -11,7 +11,7 @@ import {
 	LessonTimeDto,
 	LessonTypeDto,
 } from "../../../dto/schedule.dto";
-import { trimAll } from "../../../utility/string.util";
+import { toNormalString, trimAll } from "../../../utility/string.util";
 
 type InternalId = { row: number; column: number; name: string };
 type InternalDay = InternalId & { lessons: Array<InternalId> };
@@ -23,18 +23,22 @@ export class ScheduleParseResult {
 	updateRequired: boolean;
 }
 
+type CellData = XLSX.CellObject["v"];
+
 export class ScheduleParser {
 	private lastResult: ScheduleParseResult | null = null;
 
 	public constructor(private readonly xlsDownloader: XlsDownloaderBase) {}
 
-	private static getCellName(
+	private static getCellData(
 		worksheet: XLSX.Sheet,
 		row: number,
 		column: number,
-	): any | null {
-		const cell = worksheet[XLSX.utils.encode_cell({ r: row, c: column })];
-		return cell ? cell.v : null;
+	): string | null {
+		const cell: XLSX.CellObject | null =
+			worksheet[XLSX.utils.encode_cell({ r: row, c: column })];
+
+		return toNormalString(cell?.w);
 	}
 
 	private parseTeacherFullNames(lessonName: string): {
@@ -79,7 +83,7 @@ export class ScheduleParser {
 		const days: Array<InternalDay> = [];
 
 		for (let row = range.s.r + 1; row <= range.e.r; ++row) {
-			const dayName = ScheduleParser.getCellName(worksheet, row, 0);
+			const dayName = ScheduleParser.getCellData(worksheet, row, 0);
 			if (!dayName) continue;
 
 			if (!isHeaderParsed) {
@@ -91,7 +95,7 @@ export class ScheduleParser {
 					column <= range.e.c;
 					++column
 				) {
-					const groupName = ScheduleParser.getCellName(
+					const groupName = ScheduleParser.getCellData(
 						worksheet,
 						row,
 						column,
@@ -173,65 +177,67 @@ export class ScheduleParser {
 					row < daySkeleton.row + rowDistance;
 					++row
 				) {
-					const time: string | null = ScheduleParser.getCellName(
+					// time
+					const time = ScheduleParser.getCellData(
 						workSheet,
 						row,
 						lessonTimeColumn,
 					)?.replaceAll(" ", "");
-					if (!time || typeof time !== "string") continue;
 
-					const rawName: string | null = ScheduleParser.getCellName(
-						workSheet,
-						row,
-						groupSkeleton.column,
-					);
-					const cabinets: Array<string> = [];
+					if (!time) continue;
 
-					const rawCabinets = String(
-						ScheduleParser.getCellName(
+					// name
+					const rawName: CellData = trimAll(
+						ScheduleParser.getCellData(
 							workSheet,
 							row,
-							groupSkeleton.column + 1,
-						),
+							groupSkeleton.column,
+						)?.replaceAll(/[\n\r]/g, "") ?? "",
 					);
-					if (rawCabinets !== "null") {
-						const rawLessonCabinetParts =
-							rawCabinets.split(/(\n|\s)/g);
 
-						for (const cabinet of rawLessonCabinetParts) {
-							if (
-								cabinet.length === 0 ||
-								cabinet === " " ||
-								cabinet === "\n"
-							)
-								continue;
-
-							cabinets.push(cabinet);
-						}
-					}
-
-					if (!rawName || rawName.length === 0) {
+					if (rawName.length === 0) {
 						day.lessons.push(null);
 						continue;
 					}
 
-					const type = time?.includes("пара")
+					// cabinets
+					const cabinets: Array<string> = [];
+
+					const rawCabinets = ScheduleParser.getCellData(
+						workSheet,
+						row,
+						groupSkeleton.column + 1,
+					);
+
+					if (rawCabinets) {
+						const parts = rawCabinets.split(/(\n|\s)/g);
+
+						for (const cabinet of parts) {
+							if (!toNormalString(cabinet)) continue;
+
+							cabinets.push(cabinet.replaceAll(/[\n\s\r]/g, " "));
+						}
+					}
+
+					// type
+					const lessonType = time?.includes("пара")
 						? LessonTypeDto.DEFAULT
 						: LessonTypeDto.CUSTOM;
 
+					// full names
 					const { name, teacherFullNames } =
 						this.parseTeacherFullNames(
-							trimAll(rawName?.replace("\n", "") ?? ""),
+							trimAll(rawName?.replaceAll(/[\n\r]/g, "") ?? ""),
 						);
 
 					day.lessons.push(
 						new LessonDto(
-							type,
-							type === LessonTypeDto.DEFAULT
+							lessonType,
+							lessonType === LessonTypeDto.DEFAULT
 								? Number.parseInt(time[0])
 								: -1,
 							LessonTimeDto.fromString(
-								type === LessonTypeDto.DEFAULT
+								lessonType === LessonTypeDto.DEFAULT
 									? time.substring(5)
 									: time,
 							),
