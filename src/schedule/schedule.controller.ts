@@ -82,6 +82,7 @@ export class ScheduleController {
 	}
 
 	@ApiExtraModels(SiteMainPageDto)
+	@ApiExtraModels(CacheStatusDto)
 	@ApiOperation({
 		summary: "Обновление данных основной страницы политехникума",
 		tags: ["schedule"],
@@ -90,12 +91,12 @@ export class ScheduleController {
 	@ApiNotAcceptableResponse({
 		description: "Передан некорректный код страницы",
 	})
-	@ResultDto(null)
+	@ResultDto(CacheStatusDto)
 	@HttpCode(HttpStatus.OK)
 	@Post("update-site-main-page")
 	async updateSiteMainPage(
 		@Body() siteMainPageDto: SiteMainPageDto,
-	): Promise<void> {
+	): Promise<CacheStatusDto> {
 		return await this.scheduleService.updateSiteMainPage(siteMainPageDto);
 	}
 

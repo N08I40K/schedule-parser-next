@@ -127,12 +127,16 @@ export class ScheduleService {
 		return groupNames;
 	}
 
-	async updateSiteMainPage(siteMainPageDto: SiteMainPageDto): Promise<void> {
+	async updateSiteMainPage(
+		siteMainPageDto: SiteMainPageDto,
+	): Promise<CacheStatusDto> {
 		await this.scheduleParser
 			.getXlsDownloader()
 			.setPreparedData(siteMainPageDto.mainPage);
 
 		await this.cacheManager.reset();
 		await this.getSourceSchedule();
+
+		return this.getCacheStatus();
 	}
 }
