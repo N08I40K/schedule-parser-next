@@ -107,11 +107,16 @@ export class ScheduleParser {
 				++row;
 			}
 
-			const dayMonthIdx = /[А-Яа-я]+\s(\d+)\.\d+\.\d+/.exec(
-				trimAll(dayName),
-			);
+			if (
+				days.length == 0 ||
+				!days[days.length - 1].name.startsWith("Суббота")
+			) {
+				const dayMonthIdx = /[А-Яа-я]+\s(\d+)\.\d+\.\d+/.exec(
+					trimAll(dayName),
+				);
 
-			if (dayMonthIdx === null) continue;
+				if (dayMonthIdx === null) continue;
+			}
 
 			days.push({
 				row: row,

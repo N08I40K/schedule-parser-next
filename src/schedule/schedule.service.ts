@@ -31,6 +31,7 @@ export class ScheduleService {
 	private cacheHash: string = "0000000000000000000000000000000000000000";
 
 	private lastChangedDays: Array<Array<number>> = [];
+	private scheduleUpdatedAt: Date = new Date(0);
 
 	constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {}
 
@@ -39,6 +40,8 @@ export class ScheduleService {
 			cacheHash: this.cacheHash,
 			cacheUpdateRequired:
 				(Date.now() - this.cacheUpdatedAt.valueOf()) / 1000 / 60 >= 5,
+			lastCacheUpdate: this.cacheUpdatedAt.valueOf(),
+			lastScheduleUpdate: this.scheduleUpdatedAt.valueOf(),
 		};
 	}
 
@@ -50,10 +53,20 @@ export class ScheduleService {
 			) as Array<GroupDto>;
 
 			this.cacheUpdatedAt = new Date();
+
+			const oldHash = this.cacheHash;
 			this.cacheHash = crypto
 				.createHash("sha1")
-				.update(schedule.etag)
+				.update(
+					JSON.stringify(schedule.groups, null, 0) + schedule.etag,
+				)
 				.digest("hex");
+
+			if (
+				this.scheduleUpdatedAt.valueOf() === 0 ||
+				this.cacheHash !== oldHash
+			)
+				this.scheduleUpdatedAt = new Date();
 
 			return schedule;
 		});

@@ -32,6 +32,12 @@ export class ClassValidatorInterceptor implements NestInterceptor {
 					handler.name,
 				);
 
+				const isArrayOfDto = Reflect.getMetadata(
+					"design:result-dto-array",
+					cls.prototype,
+					handler.name,
+				);
+
 				if (classDto === null) return returnValue;
 
 				if (classDto === undefined) {
@@ -41,41 +47,62 @@ export class ClassValidatorInterceptor implements NestInterceptor {
 					return returnValue;
 				}
 
-				const returnValueDto = plainToInstance(
-					classDto,
-					instanceToPlain(returnValue),
-				);
+				const dtoArray: Array<any> = isArrayOfDto
+					? classDto
+					: [classDto];
 
-				if (!(returnValueDto instanceof Object))
-					throw new InternalServerErrorException(
-						returnValueDto,
-						"Return value is not object!",
+				for (let idx = 0; idx < dtoArray.length; idx++) {
+					const returnValueDto = plainToInstance(
+						dtoArray[idx],
+						instanceToPlain(returnValue),
 					);
 
-				const validationErrors = await validate(
-					returnValueDto,
-					this.validatorOptions,
-				);
+					if (!(returnValueDto instanceof Object))
+						throw new InternalServerErrorException(
+							returnValueDto,
+							"Return value is not object!",
+						);
 
-				if (validationErrors.length > 0) {
-					throw new UnprocessableEntityException({
-						message: validationErrors
-							.map((value) => Object.values(value.constraints))
-							.flat(),
-						object: returnValue,
-						error: "Response Validation Failed",
-						statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
-					});
+					const validationErrors = await validate(
+						returnValueDto,
+						this.validatorOptions,
+					);
+
+					if (validationErrors.length > 0) {
+						if (idx !== dtoArray.length - 1) continue;
+
+						throw new UnprocessableEntityException({
+							message: validationErrors
+								.map((value) =>
+									Object.values(value.constraints),
+								)
+								.flat(),
+							object: returnValue,
+							error: "Response Validation Failed",
+							statusCode: HttpStatus.UNPROCESSABLE_ENTITY,
+						});
+					}
+					return returnValue;
 				}
-				return returnValue;
 			}),
 		);
 	}
 }
 
 // noinspection FunctionNamingConventionJS
-export function ResultDto(type: any) {
+export function ResultDto(dtoType: any) {
 	return (target: NonNullable<unknown>, propertyKey: string | symbol) => {
-		Reflect.defineMetadata("design:result-dto", type, target, propertyKey);
+		Reflect.defineMetadata(
+			"design:result-dto",
+			dtoType,
+			target,
+			propertyKey,
+		);
+		Reflect.defineMetadata(
+			"design:result-dto-array",
+			dtoType !== null && dtoType.constructor === Array,
+			target,
+			propertyKey,
+		);
 	};
 }

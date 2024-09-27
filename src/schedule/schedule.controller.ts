@@ -11,6 +11,8 @@ import { AuthGuard } from "../auth/auth.guard";
 import { ScheduleService } from "./schedule.service";
 import {
 	CacheStatusDto,
+	CacheStatusV0Dto,
+	CacheStatusV1Dto,
 	GroupScheduleDto,
 	GroupScheduleRequestDto,
 	ScheduleDto,
@@ -26,6 +28,7 @@ import {
 	ApiOperation,
 	refs,
 } from "@nestjs/swagger";
+import { ClientVersion } from "../version/client-version.decorator";
 
 @Controller("api/v1/schedule")
 @UseGuards(AuthGuard)
@@ -82,34 +85,59 @@ export class ScheduleController {
 	}
 
 	@ApiExtraModels(SiteMainPageDto)
-	@ApiExtraModels(CacheStatusDto)
+	@ApiExtraModels(CacheStatusV0Dto)
+	@ApiExtraModels(CacheStatusV1Dto)
 	@ApiOperation({
 		summary: "Обновление данных основной страницы политехникума",
 		tags: ["schedule"],
 	})
-	@ApiOkResponse({ description: "Данные обновлены успешно" })
+	@ApiOkResponse({
+		description: "Данные обновлены успешно",
+		schema: refs(CacheStatusV0Dto)[0],
+	})
+	@ApiOkResponse({
+		description: "Данные обновлены успешно",
+		schema: refs(CacheStatusV0Dto)[1],
+	})
 	@ApiNotAcceptableResponse({
 		description: "Передан некорректный код страницы",
 	})
-	@ResultDto(CacheStatusDto)
+	@ResultDto([CacheStatusV0Dto, CacheStatusV1Dto])
 	@HttpCode(HttpStatus.OK)
 	@Post("update-site-main-page")
 	async updateSiteMainPage(
 		@Body() siteMainPageDto: SiteMainPageDto,
-	): Promise<CacheStatusDto> {
-		return await this.scheduleService.updateSiteMainPage(siteMainPageDto);
+		@ClientVersion() version: number,
+	): Promise<CacheStatusV0Dto> {
+		return CacheStatusDto.stripVersion(
+			await this.scheduleService.updateSiteMainPage(siteMainPageDto),
+			version,
+		);
 	}
 
-	@ApiExtraModels(CacheStatusDto)
+	@ApiExtraModels(CacheStatusV0Dto)
+	@ApiExtraModels(CacheStatusV1Dto)
 	@ApiOperation({
 		summary: "Получение информации о кеше",
 		tags: ["schedule", "cache"],
 	})
-	@ApiOkResponse({ description: "Получение данных прошло успешно" })
-	@ResultDto(CacheStatusDto)
+	@ApiOkResponse({
+		description: "Получение данных прошло успешно",
+		schema: refs(CacheStatusV0Dto)[0],
+	})
+	@ApiOkResponse({
+		description: "Получение данных прошло успешно",
+		schema: refs(CacheStatusV1Dto)[0],
+	})
+	@ResultDto([CacheStatusV0Dto, CacheStatusV1Dto])
 	@HttpCode(HttpStatus.OK)
 	@Get("cache-status")
-	getCacheStatus(): CacheStatusDto {
-		return this.scheduleService.getCacheStatus();
+	getCacheStatus(
+		@ClientVersion() version: number,
+	): CacheStatusV0Dto | CacheStatusV1Dto {
+		return CacheStatusDto.stripVersion(
+			this.scheduleService.getCacheStatus(),
+			version,
+		);
 	}
 }

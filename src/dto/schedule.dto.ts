@@ -12,7 +12,13 @@ import {
 	ValidateNested,
 } from "class-validator";
 import { ApiProperty, OmitType, PickType } from "@nestjs/swagger";
-import { Transform, Type } from "class-transformer";
+import {
+	Expose,
+	instanceToPlain,
+	plainToClass,
+	Transform,
+	Type,
+} from "class-transformer";
 
 export class LessonTimeDto {
 	@ApiProperty({
@@ -205,12 +211,13 @@ export class GroupDto {
 	}
 }
 
-export class CacheStatusDto {
+export class CacheStatusV0Dto {
 	@ApiProperty({
 		example: true,
 		description: "Нужно ли обновить ссылку для скачивания xls?",
 	})
 	@IsBoolean()
+	@Expose()
 	cacheUpdateRequired: boolean;
 
 	@ApiProperty({
@@ -218,7 +225,42 @@ export class CacheStatusDto {
 		description: "Хеш последних полученных данных",
 	})
 	@IsHash("sha1")
+	@Expose()
 	cacheHash: string;
+}
+
+export class CacheStatusV1Dto extends CacheStatusV0Dto {
+	@ApiProperty({
+		example: new Date().valueOf(),
+		description: "Дата обновления кеша",
+	})
+	@IsNumber()
+	@Expose()
+	lastCacheUpdate: number;
+
+	@ApiProperty({
+		example: new Date().valueOf(),
+		description: "Дата обновления расписания",
+	})
+	@IsNumber()
+	@Expose()
+	lastScheduleUpdate: number;
+}
+
+export class CacheStatusDto extends CacheStatusV1Dto {
+	public static stripVersion(instance: CacheStatusDto, version: number) {
+		switch (version) {
+			default:
+				return instance;
+			case 0: {
+				return plainToClass(
+					CacheStatusV0Dto,
+					instanceToPlain(instance),
+					{ excludeExtraneousValues: true },
+				);
+			}
+		}
+	}
 }
 
 export class ScheduleDto {
