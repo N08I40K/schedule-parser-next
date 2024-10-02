@@ -55,15 +55,16 @@ export class AuthService {
 	}
 
 	async signUp(signUpDto: SignUpReqDto): Promise<SignUpResDto> {
+		const group = signUpDto.group.replaceAll(" ", "");
+		const username = signUpDto.username.replaceAll(" ", "");
+
 		if (
 			![UserRoleDto.STUDENT, UserRoleDto.TEACHER].includes(signUpDto.role)
 		) {
 			throw new NotAcceptableException("Передана неизвестная роль");
 		}
 
-		if (
-			await this.usersService.contains({ username: signUpDto.username })
-		) {
+		if (await this.usersService.contains({ username: username })) {
 			throw new ConflictException(
 				"Пользователь с таким именем уже существует!",
 			);
@@ -74,14 +75,14 @@ export class AuthService {
 
 		const input: Prisma.UserCreateInput = {
 			id: id,
-			username: signUpDto.username,
+			username: username,
 			salt: salt,
 			password: await hash(signUpDto.password, salt),
 			accessToken: await this.jwtService.signAsync({
 				id: id,
 			}),
 			role: signUpDto.role as UserRole,
-			group: signUpDto.group,
+			group: group,
 		};
 
 		return this.usersService.create(input).then((user) => {
@@ -94,7 +95,7 @@ export class AuthService {
 
 	async signIn(signInDto: SignInReqDto): Promise<SignInResDto> {
 		const user = await this.usersService.findUnique({
-			username: signInDto.username,
+			username: signInDto.username.replaceAll(" ", ""),
 		});
 
 		if (

@@ -3,6 +3,7 @@ import { AuthModule } from "./auth/auth.module";
 import { UsersModule } from "./users/users.module";
 import { ScheduleModule } from "./schedule/schedule.module";
 import { CacheModule } from "@nestjs/cache-manager";
+import { ScheduleReplacerModule } from "./schedule-replacer/schedule-replacer.module";
 
 @Module({
 	imports: [
@@ -10,6 +11,7 @@ import { CacheModule } from "@nestjs/cache-manager";
 		UsersModule,
 		ScheduleModule,
 		CacheModule.register({ ttl: 5 * 60 * 1000, isGlobal: true }),
+		ScheduleReplacerModule,
 	],
 	controllers: [],
 	providers: [],

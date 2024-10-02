@@ -290,6 +290,10 @@ export class ScheduleParser {
 				const llesson = lday.lessons[lessonIdx];
 				// noinspection SpellCheckingInspection
 				const rlesson = rday.lessons[lessonIdx];
+
+				if (llesson === null && rlesson === null) continue;
+				if (!llesson || !rlesson) return false;
+
 				if (
 					llesson.name.length > 0 &&
 					(llesson.name !== rlesson.name ||

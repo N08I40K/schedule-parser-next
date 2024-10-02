@@ -9,11 +9,22 @@ import {
 	NotAcceptableException,
 	ServiceUnavailableException,
 } from "@nestjs/common";
+import { ScheduleReplacerService } from "../../../schedule-replacer/schedule-replacer.service";
+import { Error } from "mongoose";
+import * as crypto from "crypto";
 
 export class BasicXlsDownloader extends XlsDownloaderBase {
 	cache: XlsDownloaderResult | null = null;
 	preparedData: { downloadLink: string; updateDate: string } | null = null;
+
+	private cacheHash: string = "0000000000000000000000000000000000000000";
+
 	private lastUpdate: number = 0;
+	private scheduleReplacerService: ScheduleReplacerService | null = null;
+
+	setScheduleReplacerService(service: ScheduleReplacerService) {
+		this.scheduleReplacerService = service;
+	}
 
 	private async getDOM(preparedData: any): Promise<JSDOM | null> {
 		try {
@@ -103,16 +114,31 @@ export class BasicXlsDownloader extends XlsDownloaderBase {
 ${response.statusText}`);
 		}
 
+		const replacer = await this.scheduleReplacerService.getByEtag(
+			response.headers["etag"]!,
+		);
+
+		const fileData: ArrayBuffer = replacer
+			? replacer.data
+			: response.data.buffer;
+
+		const fileDataHash = crypto
+			.createHash("sha1")
+			.update(Buffer.from(fileData).toString("base64"))
+			.digest("hex");
+
 		const result: XlsDownloaderResult = {
-			fileData: response.data.buffer,
+			fileData: fileData,
 			updateDate: this.preparedData.updateDate,
 			etag: response.headers["etag"],
 			new:
 				this.cacheMode === XlsDownloaderCacheMode.NONE
 					? true
-					: this.cache?.etag !== response.headers["etag"],
+					: this.cacheHash !== fileDataHash,
 			updateRequired: this.isUpdateRequired(),
 		};
+
+		this.cacheHash = fileDataHash;
 
 		if (this.cacheMode !== XlsDownloaderCacheMode.NONE) this.cache = result;
 

@@ -3,10 +3,11 @@ import { UsersService } from "./users.service";
 import { PrismaService } from "../prisma/prisma.service";
 import { UsersController } from "./users.controller";
 import { AuthService } from "../auth/auth.service";
-import { ScheduleService } from "../schedule/schedule.service";
+import { ScheduleModule } from "../schedule/schedule.module";
 
 @Module({
-	providers: [PrismaService, UsersService, AuthService, ScheduleService],
+	imports: [ScheduleModule],
+	providers: [PrismaService, UsersService, AuthService],
 	exports: [UsersService],
 	controllers: [UsersController],
 })

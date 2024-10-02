@@ -13,6 +13,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model ScheduleReplace {
+  id   String @id @default(auto()) @map("_id") @db.ObjectId
+  etag String @unique
+  data Bytes
+}
+
 enum UserRole {
   STUDENT
   TEACHER

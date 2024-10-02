@@ -73,7 +73,7 @@ export class AuthController {
 	async signUp(@Body() signUpDto: SignUpReqDto) {
 		if (
 			!(await this.scheduleService.getGroupNames()).names.includes(
-				signUpDto.group,
+				signUpDto.group.replaceAll(" ", ""),
 			)
 		) {
 			throw new NotFoundException(

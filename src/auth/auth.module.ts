@@ -4,20 +4,20 @@ import { jwtConstants } from "../contants";
 import { AuthService } from "./auth.service";
 import { AuthController } from "./auth.controller";
 import { UsersModule } from "../users/users.module";
-import { UsersService } from "../users/users.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { ScheduleService } from "../schedule/schedule.service";
+import { ScheduleModule } from "../schedule/schedule.module";
 
 @Module({
 	imports: [
 		UsersModule,
+		ScheduleModule,
 		JwtModule.register({
 			global: true,
 			secret: jwtConstants.secret,
 			signOptions: { expiresIn: "720h" },
 		}),
 	],
-	providers: [AuthService, UsersService, PrismaService, ScheduleService],
+	providers: [AuthService, PrismaService],
 	controllers: [AuthController],
 	exports: [AuthService],
 })

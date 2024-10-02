@@ -17,6 +17,7 @@ import { Cache, CACHE_MANAGER } from "@nestjs/cache-manager";
 import { instanceToPlain } from "class-transformer";
 import { cacheGetOrFill } from "../utility/cache.util";
 import * as crypto from "crypto";
+import { ScheduleReplacerService } from "../schedule-replacer/schedule-replacer.service";
 
 @Injectable()
 export class ScheduleService {
@@ -33,7 +34,18 @@ export class ScheduleService {
 	private lastChangedDays: Array<Array<number>> = [];
 	private scheduleUpdatedAt: Date = new Date(0);
 
-	constructor(@Inject(CACHE_MANAGER) private readonly cacheManager: Cache) {}
+	constructor(
+		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+		private readonly scheduleReplacerService: ScheduleReplacerService,
+	) {
+		const xlsDownloader = this.scheduleParser.getXlsDownloader();
+
+		if (xlsDownloader instanceof BasicXlsDownloader) {
+			xlsDownloader.setScheduleReplacerService(
+				this.scheduleReplacerService,
+			);
+		}
+	}
 
 	getCacheStatus(): CacheStatusDto {
 		return {
@@ -45,7 +57,7 @@ export class ScheduleService {
 		};
 	}
 
-	private async getSourceSchedule(): Promise<ScheduleParseResult> {
+	async getSourceSchedule(): Promise<ScheduleParseResult> {
 		return cacheGetOrFill(this.cacheManager, "sourceSchedule", async () => {
 			const schedule = await this.scheduleParser.getSchedule();
 			schedule.groups = ScheduleService.toObject(
@@ -146,10 +158,13 @@ export class ScheduleService {
 		await this.scheduleParser
 			.getXlsDownloader()
 			.setPreparedData(siteMainPageDto.mainPage);
-
-		await this.cacheManager.reset();
-		await this.getSourceSchedule();
+		await this.refreshCache();
 
 		return this.getCacheStatus();
+	}
+
+	async refreshCache() {
+		await this.cacheManager.reset();
+		await this.getSourceSchedule();
 	}
 }
