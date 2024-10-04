@@ -1,18 +1,41 @@
 import { ApiProperty, OmitType, PickType } from "@nestjs/swagger";
 import {
+	IsArray,
 	IsEnum,
 	IsJWT,
 	IsMongoId,
+	IsObject,
+	IsOptional,
 	IsString,
 	MaxLength,
 	MinLength,
+	ValidateNested,
 } from "class-validator";
-import { Expose, plainToClass } from "class-transformer";
+import { Expose, plainToClass, Type } from "class-transformer";
 
 export enum UserRoleDto {
 	STUDENT = "STUDENT",
 	TEACHER = "TEACHER",
 	ADMIN = "ADMIN",
+}
+
+export class UserFcmDto {
+	@ApiProperty({
+		description: "Токен Firebase Cloud Messaging",
+	})
+	@IsString()
+	@Expose()
+	token: string;
+
+	@ApiProperty({
+		example: ["schedule-update"],
+		description: "Топики на которые подписан пользователь",
+	})
+	@IsArray()
+	@ValidateNested({ each: true })
+	@IsString()
+	@Expose()
+	topics: Array<string>;
 }
 
 export class UserDto {
@@ -67,12 +90,20 @@ export class UserDto {
 	@IsEnum(UserRoleDto)
 	@Expose()
 	role: UserRoleDto;
+
+	@ApiProperty({ description: "Данные Firebase Cloud Messaging" })
+	@IsObject()
+	@Type(() => UserFcmDto)
+	@IsOptional()
+	@Expose()
+	fcm: UserFcmDto | null;
 }
 
 export class ClientUserResDto extends OmitType(UserDto, [
 	"password",
 	"salt",
 	"accessToken",
+	"fcm",
 ]) {
 	static fromUserDto(userDto: UserDto): ClientUserResDto {
 		return plainToClass(ClientUserResDto, userDto, {

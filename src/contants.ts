@@ -14,3 +14,7 @@ export const httpsConstants = {
 export const apiConstants = {
 	port: process.env.API_PORT ?? 5050,
 };
+
+export const firebaseConstants = {
+	serviceAccountPath: process.env.FIREBASE_ACCOUNT_PATH!,
+};

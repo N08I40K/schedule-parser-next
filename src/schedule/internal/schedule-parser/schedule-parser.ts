@@ -149,14 +149,8 @@ export class ScheduleParser {
 			!downloadData.new &&
 			this.lastResult &&
 			this.xlsDownloader.getCacheMode() !== XlsDownloaderCacheMode.NONE
-		) {
-			console.debug(
-				"Так как скачанный XLS не новый, присутствует уже готовый результат и кеширование не отключено...",
-			);
-			console.debug("будет возвращён предыдущий результат.");
-
+		)
 			return this.lastResult;
-		}
 
 		const workBook = XLSX.read(downloadData.fileData);
 		const workSheet = workBook.Sheets[workBook.SheetNames[0]];

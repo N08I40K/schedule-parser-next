@@ -17,7 +17,7 @@ import {
 import { AuthRoles } from "../auth-role/auth-role.decorator";
 import { UserRoleDto } from "../dto/user.dto";
 import { ScheduleReplacerService } from "./schedule-replacer.service";
-import { ScheduleService } from "../schedule/schedule.service";
+import { ScheduleService } from "./schedule.service";
 import { FileInterceptor } from "@nestjs/platform-express";
 import {
 	ApiExtraModels,

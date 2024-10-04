@@ -34,8 +34,8 @@ import { UserToken } from "./auth.decorator";
 @Controller("api/v1/auth")
 export class AuthController {
 	constructor(
-		private readonly scheduleService: ScheduleService,
 		private readonly authService: AuthService,
+		private readonly scheduleService: ScheduleService,
 	) {}
 
 	@ApiExtraModels(SignInReqDto)

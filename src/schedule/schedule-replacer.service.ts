@@ -7,6 +7,14 @@ import { plainToClass } from "class-transformer";
 export class ScheduleReplacerService {
 	constructor(private readonly prismaService: PrismaService) {}
 
+	async hasByEtag(etag: string): Promise<boolean> {
+		return (
+			(await this.prismaService.scheduleReplace.count({
+				where: { etag: etag },
+			})) > 0
+		);
+	}
+
 	async getByEtag(etag: string): Promise<ScheduleReplacerDto | null> {
 		const response = await this.prismaService.scheduleReplace.findUnique({
 			where: { etag: etag },

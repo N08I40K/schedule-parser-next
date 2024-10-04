@@ -9,7 +9,7 @@ import {
 	NotAcceptableException,
 	ServiceUnavailableException,
 } from "@nestjs/common";
-import { ScheduleReplacerService } from "../../../schedule-replacer/schedule-replacer.service";
+import { ScheduleReplacerService } from "../../schedule-replacer.service";
 import { Error } from "mongoose";
 import * as crypto from "crypto";
 

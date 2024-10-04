@@ -25,6 +25,11 @@ enum UserRole {
   ADMIN
 }
 
+type FCM {
+  token  String
+  topics Json
+}
+
 model User {
   id          String   @id @map("_id") @db.ObjectId
   //
@@ -37,4 +42,6 @@ model User {
   //
   group       String
   role        UserRole
+  //
+  fcm         FCM?
 }

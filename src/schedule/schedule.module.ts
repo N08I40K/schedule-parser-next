@@ -1,18 +1,16 @@
-import { Module } from "@nestjs/common";
+import { forwardRef, Module } from "@nestjs/common";
 import { ScheduleService } from "./schedule.service";
 import { ScheduleController } from "./schedule.controller";
-import { UsersService } from "../users/users.service";
 import { PrismaService } from "../prisma/prisma.service";
-import { ScheduleReplacerService } from "../schedule-replacer/schedule-replacer.service";
+import { FirebaseAdminModule } from "../firebase-admin/firebase-admin.module";
+import { UsersModule } from "src/users/users.module";
+import { ScheduleReplacerService } from "./schedule-replacer.service";
+import { ScheduleReplacerController } from "./schedule-replacer.controller";
 
 @Module({
-	providers: [
-		ScheduleService,
-		ScheduleReplacerService,
-		UsersService,
-		PrismaService,
-	],
-	controllers: [ScheduleController],
+	imports: [forwardRef(() => UsersModule), FirebaseAdminModule],
+	providers: [PrismaService, ScheduleService, ScheduleReplacerService],
+	controllers: [ScheduleController, ScheduleReplacerController],
 	exports: [ScheduleService],
 })
 export class ScheduleModule {}

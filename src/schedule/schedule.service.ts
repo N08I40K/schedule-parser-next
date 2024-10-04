@@ -1,4 +1,8 @@
-import { Inject, Injectable, NotFoundException } from "@nestjs/common";
+import {
+	Inject,
+	Injectable,
+	NotFoundException,
+} from "@nestjs/common";
 import {
 	ScheduleParser,
 	ScheduleParseResult,
@@ -17,7 +21,8 @@ import { Cache, CACHE_MANAGER } from "@nestjs/cache-manager";
 import { instanceToPlain } from "class-transformer";
 import { cacheGetOrFill } from "../utility/cache.util";
 import * as crypto from "crypto";
-import { ScheduleReplacerService } from "../schedule-replacer/schedule-replacer.service";
+import { ScheduleReplacerService } from "./schedule-replacer.service";
+import { FirebaseAdminService } from "../firebase-admin/firebase-admin.service";
 
 @Injectable()
 export class ScheduleService {
@@ -37,6 +42,7 @@ export class ScheduleService {
 	constructor(
 		@Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
 		private readonly scheduleReplacerService: ScheduleReplacerService,
+		private readonly firebaseAdminService: FirebaseAdminService,
 	) {
 		const xlsDownloader = this.scheduleParser.getXlsDownloader();
 
@@ -77,8 +83,26 @@ export class ScheduleService {
 			if (
 				this.scheduleUpdatedAt.valueOf() === 0 ||
 				this.cacheHash !== oldHash
-			)
+			) {
+				if (this.scheduleUpdatedAt.valueOf() !== 0) {
+					const isReplaced =
+						await this.scheduleReplacerService.hasByEtag(
+							schedule.etag,
+						);
+
+					await this.firebaseAdminService.sendByTopic(
+						"schedule-update",
+						{
+							data: {
+								type: "schedule-update",
+								replaced: isReplaced.toString(),
+								etag: schedule.etag,
+							},
+						},
+					);
+				}
 				this.scheduleUpdatedAt = new Date();
+			}
 
 			return schedule;
 		});

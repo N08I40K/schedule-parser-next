@@ -1,5 +1,7 @@
 import {
 	ConflictException,
+	forwardRef,
+	Inject,
 	Injectable,
 	NotFoundException,
 } from "@nestjs/common";
@@ -16,6 +18,7 @@ import { ScheduleService } from "../schedule/schedule.service";
 export class UsersService {
 	constructor(
 		private readonly prismaService: PrismaService,
+		@Inject(forwardRef(() => ScheduleService))
 		private readonly scheduleService: ScheduleService,
 	) {}
 
