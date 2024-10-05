@@ -44,4 +44,6 @@ model User {
   role        UserRole
   //
   fcm         FCM?
+  //
+  version     String
 }

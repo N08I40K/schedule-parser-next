@@ -66,6 +66,8 @@ export class FirebaseAdminService implements OnModuleInit {
 		const currentTopics = new Set(fcm.topics);
 
 		for (const topic of topics) {
+			if (!fcm.topics.includes(topic)) continue;
+
 			await this.messaging.unsubscribeFromTopic(fcm.token, topic);
 			currentTopics.delete(topic);
 		}
@@ -84,6 +86,8 @@ export class FirebaseAdminService implements OnModuleInit {
 		const currentTopics = new Set(fcm.topics);
 
 		for (const topic of topics) {
+			if (fcm.topics.includes(topic)) continue;
+
 			await this.messaging.subscribeToTopic(fcm.token, topic);
 			currentTopics.add(topic);
 		}
@@ -94,6 +98,19 @@ export class FirebaseAdminService implements OnModuleInit {
 		return await this.usersService.update({
 			where: { id: user.id },
 			data: { fcm: fcm },
+		});
+	}
+
+	async updateApp(
+		userDto: UserDto,
+		version: string,
+		topics: Set<string>,
+	): Promise<void> {
+		await this.subscribe(userDto, topics).then(async (userDto) => {
+			await this.usersService.update({
+				where: { id: userDto.id },
+				data: { version: version },
+			});
 		});
 	}
 }

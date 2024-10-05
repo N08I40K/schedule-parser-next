@@ -1,4 +1,6 @@
 import {
+	BadRequestException,
+	Body,
 	Controller,
 	HttpCode,
 	HttpStatus,
@@ -12,11 +14,13 @@ import { UserFromTokenPipe } from "../auth/auth.pipe";
 import { UserDto } from "../dto/user.dto";
 import { ResultDto } from "../utility/validation/class-validator.interceptor";
 import { FirebaseAdminService } from "./firebase-admin.service";
+import { FcmPostUpdateDto } from "../dto/fcm.dto";
+import { isSemVer } from "class-validator";
 
 @Controller("api/v1/fcm")
 @UseGuards(AuthGuard)
 export class FirebaseAdminController {
-	private readonly defaultTopics = new Set(["schedule-update"]);
+	private readonly defaultTopics = new Set(["schedule-update", "app-update"]);
 
 	constructor(private readonly firebaseAdminService: FirebaseAdminService) {}
 
@@ -37,5 +41,38 @@ export class FirebaseAdminController {
 			updatedUser,
 			this.defaultTopics,
 		);
+	}
+
+	@Post("update-callback/:version")
+	@HttpCode(HttpStatus.OK)
+	@ResultDto(null)
+	async updateCallback(
+		@UserToken(UserFromTokenPipe) userDto: UserDto,
+		@Param("version") version: string,
+	) {
+		if (!isSemVer(version)) {
+			throw new BadRequestException(
+				"version must be a Semantic Versioning Specification",
+			);
+		}
+
+		await this.firebaseAdminService.updateApp(
+			userDto,
+			version,
+			this.defaultTopics,
+		);
+	}
+
+	@Post("post-update")
+	@HttpCode(HttpStatus.OK)
+	@ResultDto(null)
+	async postUpdate(@Body() postUpdateDto: FcmPostUpdateDto): Promise<void> {
+		await this.firebaseAdminService.sendByTopic("app-update", {
+			data: {
+				type: "app-update",
+				version: postUpdateDto.version,
+				downloadLink: postUpdateDto.downloadLink,
+			},
+		});
 	}
 }

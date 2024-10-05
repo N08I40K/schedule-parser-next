@@ -15,7 +15,7 @@ export class PartialValidationPipe implements PipeTransform {
 		this.partialValidationPipe = new ValidationPipe({
 			...options,
 			...{
-				skipUndefinedProperties: true,
+				skipUndefinedProperties: false,
 				skipNullValues: false,
 			},
 		});

@@ -83,6 +83,7 @@ export class AuthService {
 			}),
 			role: signUpDto.role as UserRole,
 			group: group,
+			version: signUpDto.version ?? "1.0.0",
 		};
 
 		return this.usersService.create(input).then((user) => {

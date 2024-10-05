@@ -1,8 +1,4 @@
-import {
-	Inject,
-	Injectable,
-	NotFoundException,
-} from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import {
 	ScheduleParser,
 	ScheduleParseResult,
@@ -23,6 +19,7 @@ import { cacheGetOrFill } from "../utility/cache.util";
 import * as crypto from "crypto";
 import { ScheduleReplacerService } from "./schedule-replacer.service";
 import { FirebaseAdminService } from "../firebase-admin/firebase-admin.service";
+import { scheduleConstants } from "../contants";
 
 @Injectable()
 export class ScheduleService {
@@ -57,7 +54,8 @@ export class ScheduleService {
 		return {
 			cacheHash: this.cacheHash,
 			cacheUpdateRequired:
-				(Date.now() - this.cacheUpdatedAt.valueOf()) / 1000 / 60 >= 5,
+				(Date.now() - this.cacheUpdatedAt.valueOf()) / 1000 / 60 >=
+				scheduleConstants.cacheInvalidateDelay,
 			lastCacheUpdate: this.cacheUpdatedAt.valueOf(),
 			lastScheduleUpdate: this.scheduleUpdatedAt.valueOf(),
 		};

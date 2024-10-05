@@ -6,6 +6,7 @@ import {
 	IsMongoId,
 	IsObject,
 	IsOptional,
+	IsSemVer,
 	IsString,
 	MaxLength,
 	MinLength,
@@ -97,6 +98,11 @@ export class UserDto {
 	@IsOptional()
 	@Expose()
 	fcm: UserFcmDto | null;
+
+	@ApiProperty({ description: "Версия установленого приложения" })
+	@IsSemVer()
+	@Expose()
+	version: string;
 }
 
 export class ClientUserResDto extends OmitType(UserDto, [
@@ -104,6 +110,7 @@ export class ClientUserResDto extends OmitType(UserDto, [
 	"salt",
 	"accessToken",
 	"fcm",
+	"version",
 ]) {
 	static fromUserDto(userDto: UserDto): ClientUserResDto {
 		return plainToClass(ClientUserResDto, userDto, {

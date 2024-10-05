@@ -26,12 +26,12 @@ async function bootstrap() {
 	const swaggerConfig = new DocumentBuilder()
 		.setTitle("Schedule Parser")
 		.setDescription("Парсер расписания")
-		.setVersion("1.0")
+		.setVersion(apiConstants.version)
 		.build();
 	const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
 	swaggerDocument.servers = [
 		{
-			url: "http://localhost:3000",
+			url: `https://localhost:${apiConstants.port}`,
 			description: "Локальный сервер для разработки",
 		},
 	];

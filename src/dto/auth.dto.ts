@@ -1,4 +1,9 @@
-import { ApiProperty, IntersectionType, PickType } from "@nestjs/swagger";
+import {
+	ApiProperty,
+	IntersectionType,
+	PartialType,
+	PickType,
+} from "@nestjs/swagger";
 import { UserDto } from "./user.dto";
 import { IsString } from "class-validator";
 import { Expose } from "class-transformer";
@@ -19,6 +24,7 @@ export class SignInResDto extends PickType(UserDto, ["id", "accessToken"]) {}
 export class SignUpReqDto extends IntersectionType(
 	SignInReqDto,
 	PickType(UserDto, ["role", "group"]),
+	PartialType(PickType(UserDto, ["version"])),
 ) {}
 
 export class SignUpResDto extends SignInResDto {}
