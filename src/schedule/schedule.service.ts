@@ -88,16 +88,13 @@ export class ScheduleService {
 							schedule.etag,
 						);
 
-					await this.firebaseAdminService.sendByTopic(
-						"schedule-update",
-						{
-							data: {
-								type: "schedule-update",
-								replaced: isReplaced.toString(),
-								etag: schedule.etag,
-							},
+					await this.firebaseAdminService.sendByTopic("common", {
+						data: {
+							type: "schedule-update",
+							replaced: isReplaced.toString(),
+							etag: schedule.etag,
 						},
-					);
+					});
 				}
 				this.scheduleUpdatedAt = new Date();
 			}

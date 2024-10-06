@@ -69,7 +69,7 @@ export class FirebaseAdminController {
 	@HttpCode(HttpStatus.OK)
 	@ResultDto(null)
 	async postUpdate(@Body() postUpdateDto: FcmPostUpdateDto): Promise<void> {
-		await this.firebaseAdminService.sendByTopic("app-update", {
+		await this.firebaseAdminService.sendByTopic("common", {
 			data: {
 				type: "app-update",
 				version: postUpdateDto.version,
