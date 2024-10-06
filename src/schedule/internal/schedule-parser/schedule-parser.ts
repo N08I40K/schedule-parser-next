@@ -46,9 +46,9 @@ export class ScheduleParser {
 		teacherFullNames: Array<string>;
 	} {
 		const firstRegex =
-			/(?:[А-ЯЁ][а-яё]+\s[А-ЯЁ]\.[А-ЯЁ]\.(?:\s\([0-9] подгруппа\))?(?:,\s)?)+$/gm;
+			/(?:[А-ЯЁ][а-яё]+\s[А-ЯЁ]\.[А-ЯЁ]\.(?:\s?\([0-9] подгруппа\))?(?:,\s)?)+$/gm;
 		const secondRegex =
-			/(?:[А-ЯЁ][а-яё]+\s[А-ЯЁ]\.[А-ЯЁ]\.(?:\s\([0-9] подгруппа\))?)+/gm;
+			/(?:[А-ЯЁ][а-яё]+\s[А-ЯЁ]\.[А-ЯЁ]\.(?:\s?\([0-9] подгруппа\))?)+/gm;
 
 		const fm = firstRegex.exec(lessonName);
 		if (fm === null) return { name: lessonName, teacherFullNames: [] };
