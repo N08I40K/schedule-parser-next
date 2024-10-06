@@ -20,7 +20,8 @@ import { isSemVer } from "class-validator";
 @Controller("api/v1/fcm")
 @UseGuards(AuthGuard)
 export class FirebaseAdminController {
-	private readonly defaultTopics = new Set(["schedule-update", "app-update"]);
+	private readonly oldTopics = new Set(["app-update", "schedule-update"]);
+	private readonly defaultTopics = new Set(["common"]);
 
 	constructor(private readonly firebaseAdminService: FirebaseAdminService) {}
 
@@ -37,10 +38,11 @@ export class FirebaseAdminController {
 			await this.firebaseAdminService.updateToken(user, token)
 		).userDto;
 
-		await this.firebaseAdminService.subscribe(
-			updatedUser,
-			this.defaultTopics,
-		);
+		await this.firebaseAdminService
+			.subscribe(updatedUser, this.defaultTopics, true)
+			.then((userDto) =>
+				this.firebaseAdminService.unsubscribe(userDto, this.oldTopics),
+			);
 	}
 
 	@Post("update-callback/:version")
