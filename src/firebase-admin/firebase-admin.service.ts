@@ -23,6 +23,8 @@ export class FirebaseAdminService implements OnModuleInit {
 	private app: App;
 	private messaging: Messaging;
 
+	private readonly defaultTopics = new Set(["common"]);
+
 	onModuleInit() {
 		this.app = initializeApp({
 			credential: credential.cert(firebaseConstants.serviceAccountPath),
@@ -86,10 +88,12 @@ export class FirebaseAdminService implements OnModuleInit {
 		topics: Set<string>,
 		force: boolean = false,
 	): Promise<UserDto> {
+		const newTopics = new Set([...this.defaultTopics, ...topics]);
+
 		const fcm = user.fcm;
 		const currentTopics = new Set(fcm.topics);
 
-		for (const topic of topics) {
+		for (const topic of newTopics) {
 			if (fcm.topics.includes(topic) && !force) continue;
 
 			await this.messaging.subscribeToTopic(fcm.token, topic);
@@ -105,12 +109,8 @@ export class FirebaseAdminService implements OnModuleInit {
 		});
 	}
 
-	async updateApp(
-		userDto: UserDto,
-		version: string,
-		topics: Set<string>,
-	): Promise<void> {
-		await this.subscribe(userDto, topics, true).then(async (userDto) => {
+	async updateApp(userDto: UserDto, version: string): Promise<void> {
+		await this.subscribe(userDto, new Set(), true).then(async (userDto) => {
 			await this.usersService.update({
 				where: { id: userDto.id },
 				data: { version: version },

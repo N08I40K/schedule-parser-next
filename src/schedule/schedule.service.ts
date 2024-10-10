@@ -48,6 +48,21 @@ export class ScheduleService {
 				this.scheduleReplacerService,
 			);
 		}
+
+		setInterval(async () => {
+			const now = new Date();
+			if (now.getHours() != 7 || now.getMinutes() != 30) return;
+
+			await this.firebaseAdminService.sendByTopic("common", {
+				android: {
+					priority: "high",
+					ttl: 60 * 60 * 1000,
+				},
+				data: {
+					type: "lessons-start",
+				},
+			});
+		}, 60000);
 	}
 
 	getCacheStatus(): CacheStatusDto {

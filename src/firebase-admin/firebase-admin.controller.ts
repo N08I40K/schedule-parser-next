@@ -21,7 +21,6 @@ import { isSemVer } from "class-validator";
 @UseGuards(AuthGuard)
 export class FirebaseAdminController {
 	private readonly oldTopics = new Set(["app-update", "schedule-update"]);
-	private readonly defaultTopics = new Set(["common"]);
 
 	constructor(private readonly firebaseAdminService: FirebaseAdminService) {}
 
@@ -39,7 +38,7 @@ export class FirebaseAdminController {
 		).userDto;
 
 		await this.firebaseAdminService
-			.subscribe(updatedUser, this.defaultTopics, true)
+			.subscribe(updatedUser, new Set(), true)
 			.then((userDto) =>
 				this.firebaseAdminService.unsubscribe(userDto, this.oldTopics),
 			);
@@ -58,11 +57,7 @@ export class FirebaseAdminController {
 			);
 		}
 
-		await this.firebaseAdminService.updateApp(
-			userDto,
-			version,
-			this.defaultTopics,
-		);
+		await this.firebaseAdminService.updateApp(userDto, version);
 	}
 
 	@Post("post-update")
@@ -70,6 +65,9 @@ export class FirebaseAdminController {
 	@ResultDto(null)
 	async postUpdate(@Body() postUpdateDto: FcmPostUpdateDto): Promise<void> {
 		await this.firebaseAdminService.sendByTopic("common", {
+			android: {
+				priority: "high",
+			},
 			data: {
 				type: "app-update",
 				version: postUpdateDto.version,
