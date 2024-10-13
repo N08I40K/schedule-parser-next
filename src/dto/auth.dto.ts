@@ -36,7 +36,7 @@ export class SignInResDtoV0 {
 	accessToken: string;
 }
 
-export class SignInResDtoV1 extends SignInResDtoV0 {
+export class SignInResDtoV2 extends SignInResDtoV0 {
 	@ApiProperty({
 		example: "ИС-214/23",
 		description: "Группа",
@@ -46,15 +46,16 @@ export class SignInResDtoV1 extends SignInResDtoV0 {
 	group: string;
 }
 
-export class SignInResDto extends SignInResDtoV1 {
+export class SignInResDto extends SignInResDtoV2 {
 	public static stripVersion(
 		instance: SignInResDto,
 		version: number,
-	): SignInResDtoV0 | SignInResDtoV1 {
+	): SignInResDtoV0 | SignInResDtoV2 {
 		switch (version) {
 			default:
 				return instance;
-			case 0: {
+			case 0:
+			case 1: {
 				return plainToClass(SignInResDtoV0, instanceToPlain(instance), {
 					excludeExtraneousValues: true,
 				});
