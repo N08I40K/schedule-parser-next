@@ -1,6 +1,6 @@
 import { createParamDecorator, ExecutionContext } from "@nestjs/common";
 
-export const ClientVersion = createParamDecorator(
+export const ResponseVersion = createParamDecorator(
 	(_, context: ExecutionContext) => {
 		const sourceVersion: string | null = context.switchToHttp().getRequest()
 			.headers.version;

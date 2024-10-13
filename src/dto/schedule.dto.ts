@@ -11,7 +11,7 @@ import {
 	IsString,
 	ValidateNested,
 } from "class-validator";
-import { ApiProperty, OmitType, PickType } from "@nestjs/swagger";
+import { ApiProperty, OmitType, PartialType, PickType } from "@nestjs/swagger";
 import {
 	Expose,
 	instanceToPlain,
@@ -296,7 +296,9 @@ export class ScheduleDto {
 	lastChangedDays: Array<Array<number>>;
 }
 
-export class GroupScheduleRequestDto extends PickType(GroupDto, ["name"]) {}
+export class GroupScheduleReqDto extends PartialType(
+	PickType(GroupDto, ["name"]),
+) {}
 
 export class ScheduleGroupsDto {
 	@ApiProperty({

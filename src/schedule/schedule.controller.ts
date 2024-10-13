@@ -14,7 +14,7 @@ import {
 	CacheStatusV0Dto,
 	CacheStatusV1Dto,
 	GroupScheduleDto,
-	GroupScheduleRequestDto,
+	GroupScheduleReqDto,
 	ScheduleDto,
 	ScheduleGroupsDto,
 	SiteMainPageDto,
@@ -28,7 +28,11 @@ import {
 	ApiOperation,
 	refs,
 } from "@nestjs/swagger";
-import { ClientVersion } from "../version/client-version.decorator";
+import { ResponseVersion } from "../version/response-version.decorator";
+import { AuthRoles, AuthUnauthorized } from "../auth-role/auth-role.decorator";
+import { UserDto, UserRoleDto } from "../dto/user.dto";
+import { UserToken } from "../auth/auth.decorator";
+import { UserFromTokenPipe } from "../auth/auth.pipe";
 
 @Controller("api/v1/schedule")
 @UseGuards(AuthGuard)
@@ -36,12 +40,16 @@ export class ScheduleController {
 	constructor(private readonly scheduleService: ScheduleService) {}
 
 	@ApiExtraModels(ScheduleDto)
-	@ApiOperation({ summary: "Получение расписания", tags: ["schedule"] })
+	@ApiOperation({
+		summary: "Получение расписания",
+		tags: ["schedule", "admin"],
+	})
 	@ApiOkResponse({
 		description: "Расписание получено успешно",
 		schema: refs(ScheduleDto)[0],
 	})
 	@ResultDto(ScheduleDto)
+	@AuthRoles([UserRoleDto.ADMIN])
 	@HttpCode(HttpStatus.OK)
 	@Get("get")
 	async getSchedule(): Promise<ScheduleDto> {
@@ -62,9 +70,10 @@ export class ScheduleController {
 	@HttpCode(HttpStatus.OK)
 	@Post("get-group")
 	async getGroupSchedule(
-		@Body() groupDto: GroupScheduleRequestDto,
+		@Body() groupDto: GroupScheduleReqDto,
+		@UserToken(UserFromTokenPipe) user: UserDto,
 	): Promise<GroupScheduleDto> {
-		return await this.scheduleService.getGroup(groupDto.name);
+		return await this.scheduleService.getGroup(groupDto.name ?? user.group);
 	}
 
 	@ApiExtraModels(ScheduleGroupsDto)
@@ -78,6 +87,7 @@ export class ScheduleController {
 	})
 	@ApiNotFoundResponse({ description: "Требуемая группа не найдена" })
 	@ResultDto(ScheduleGroupsDto)
+	@AuthUnauthorized()
 	@HttpCode(HttpStatus.OK)
 	@Get("get-group-names")
 	async getGroupNames(): Promise<ScheduleGroupsDto> {
@@ -107,7 +117,7 @@ export class ScheduleController {
 	@Post("update-site-main-page")
 	async updateSiteMainPage(
 		@Body() siteMainPageDto: SiteMainPageDto,
-		@ClientVersion() version: number,
+		@ResponseVersion() version: number,
 	): Promise<CacheStatusV0Dto> {
 		return CacheStatusDto.stripVersion(
 			await this.scheduleService.updateSiteMainPage(siteMainPageDto),
@@ -133,7 +143,7 @@ export class ScheduleController {
 	@HttpCode(HttpStatus.OK)
 	@Get("cache-status")
 	getCacheStatus(
-		@ClientVersion() version: number,
+		@ResponseVersion() version: number,
 	): CacheStatusV0Dto | CacheStatusV1Dto {
 		return CacheStatusDto.stripVersion(
 			this.scheduleService.getCacheStatus(),

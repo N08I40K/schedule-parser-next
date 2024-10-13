@@ -115,7 +115,7 @@ export class AuthService {
 			data: { accessToken: accessToken },
 		});
 
-		return { id: user.id, accessToken: accessToken };
+		return { id: user.id, accessToken: accessToken, group: user.group };
 	}
 
 	async updateToken(

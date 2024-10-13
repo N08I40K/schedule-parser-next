@@ -26,10 +26,13 @@ import {
 	ChangePasswordReqDto,
 	UpdateTokenReqDto,
 	UpdateTokenResDto,
+	SignInResDtoV0,
+	SignInResDtoV1,
 } from "../dto/auth.dto";
 import { ResultDto } from "../utility/validation/class-validator.interceptor";
 import { ScheduleService } from "../schedule/schedule.service";
 import { UserToken } from "./auth.decorator";
+import { ResponseVersion } from "../version/response-version.decorator";
 
 @Controller("api/v1/auth")
 export class AuthController {
@@ -39,21 +42,30 @@ export class AuthController {
 	) {}
 
 	@ApiExtraModels(SignInReqDto)
-	@ApiExtraModels(SignInResDto)
+	@ApiExtraModels(SignInResDtoV0)
+	@ApiExtraModels(SignInResDtoV1)
 	@ApiOperation({ summary: "Авторизация по логину и паролю", tags: ["auth"] })
 	@ApiBody({ schema: refs(SignInReqDto)[0] })
 	@ApiOkResponse({
 		description: "Авторизация прошла успешно",
-		schema: refs(SignInResDto)[0],
+		schema: refs(SignInResDtoV0)[0],
+	})
+	@ApiOkResponse({
+		description: "Авторизация прошла успешно",
+		schema: refs(SignInResDtoV1)[0],
 	})
 	@ApiUnauthorizedResponse({
 		description: "Некорректное имя пользователя или пароль",
 	})
-	@ResultDto(SignInResDto)
+	@ResultDto([SignInResDtoV0, SignInResDtoV1])
 	@HttpCode(HttpStatus.OK)
 	@Post("sign-in")
-	signIn(@Body() signInDto: SignInReqDto) {
-		return this.authService.signIn(signInDto);
+	async signIn(
+		@Body() signInDto: SignInReqDto,
+		@ResponseVersion() responseVersion: number,
+	): Promise<SignInResDtoV1 | SignInResDtoV0> {
+		const data = await this.authService.signIn(signInDto);
+		return SignInResDto.stripVersion(data, responseVersion);
 	}
 
 	@ApiExtraModels(SignUpReqDto)

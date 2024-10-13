@@ -9,7 +9,7 @@ import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
 import { UsersService } from "../users/users.service";
 import { Reflector } from "@nestjs/core";
-import { AuthRoles } from "../auth-role/auth-role.decorator";
+import { AuthRoles, AuthUnauthorized } from "../auth-role/auth-role.decorator";
 import { isJWT } from "class-validator";
 
 @Injectable()
@@ -30,6 +30,9 @@ export class AuthGuard implements CanActivate {
 	}
 
 	async canActivate(context: ExecutionContext): Promise<boolean> {
+		if (this.reflector.get(AuthUnauthorized, context.getHandler()))
+			return true;
+
 		const request = context.switchToHttp().getRequest();
 		const token = AuthGuard.extractTokenFromRequest(request);
 
