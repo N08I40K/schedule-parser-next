@@ -10,39 +10,40 @@ import {
 	UseInterceptors,
 } from "@nestjs/common";
 import { AuthGuard } from "src/auth/auth.guard";
-import {
-	ClearScheduleReplacerResDto,
-	ScheduleReplacerResDto,
-} from "../dto/schedule-replacer.dto";
-import { AuthRoles } from "../auth-role/auth-role.decorator";
-import { UserRoleDto } from "../dto/user.dto";
+import { AuthRoles } from "../auth/auth-role.decorator";
 import { ScheduleReplacerService } from "./schedule-replacer.service";
-import { ScheduleService } from "./schedule.service";
+import { V1ScheduleService } from "./v1-schedule.service";
 import { FileInterceptor } from "@nestjs/platform-express";
 import {
-	ApiExtraModels,
-	ApiOkResponse,
+	ApiBearerAuth,
 	ApiOperation,
-	refs,
+	ApiResponse,
+	ApiTags,
 } from "@nestjs/swagger";
 import { ResultDto } from "src/utility/validation/class-validator.interceptor";
+import { UserRole } from "../users/user-role.enum";
+import { ScheduleReplacerDto } from "./dto/schedule-replacer.dto";
+import { ClearScheduleReplacerDto } from "./dto/clear-schedule-replacer.dto";
+import { plainToInstance } from "class-transformer";
 
-@Controller("/api/v1/schedule-replacer")
+@ApiTags("v1/schedule-replacer")
+@ApiBearerAuth()
+@Controller({ path: "schedule-replacer", version: "1" })
 @UseGuards(AuthGuard)
 export class ScheduleReplacerController {
 	constructor(
-		private readonly scheduleService: ScheduleService,
+		private readonly scheduleService: V1ScheduleService,
 		private readonly scheduleReplaceService: ScheduleReplacerService,
 	) {}
 
-	@ApiOperation({
-		description: "Замена текущего расписание на новое",
-		tags: ["schedule", "replacer"],
+	@ApiOperation({ description: "Замена текущего расписание на новое" })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description: "Замена прошла успешно",
 	})
-	@ApiOkResponse({ description: "Замена прошла успешно" })
 	@Post("set")
 	@HttpCode(HttpStatus.OK)
-	@AuthRoles([UserRoleDto.ADMIN])
+	@AuthRoles([UserRole.ADMIN])
 	@ResultDto(null)
 	@UseInterceptors(
 		FileInterceptor("file", { limits: { fileSize: 1024 * 1024 } }),
@@ -59,48 +60,41 @@ export class ScheduleReplacerController {
 		await this.scheduleService.refreshCache();
 	}
 
-	@ApiExtraModels(ScheduleReplacerResDto)
-	@ApiOperation({
-		description: "Получение списка заменителей расписания",
-		tags: ["schedule", "replacer"],
+	@ApiOperation({ description: "Получение списка заменителей расписания" })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description: "Список получен успешно",
 	})
-	@ApiOkResponse({ description: "Список получен успешно" }) // TODO: ааа((((
 	@Get("get")
 	@HttpCode(HttpStatus.OK)
-	@AuthRoles([UserRoleDto.ADMIN])
+	@AuthRoles([UserRole.ADMIN])
 	@ResultDto(null) // TODO: Как нибудь сделать проверку в таких случаях
-	async getReplacers(): Promise<ScheduleReplacerResDto[]> {
-		const etag = (await this.scheduleService.getSourceSchedule()).etag;
-
-		const replacer = await this.scheduleReplaceService.getByEtag(etag);
-		if (!replacer) return [];
-
-		return [
-			{
-				etag: replacer.etag,
-				size: replacer.data.byteLength,
-			},
-		];
+	async getReplacers(): Promise<ScheduleReplacerDto[]> {
+		return await this.scheduleReplaceService.getAll().then((result) => {
+			return result.map((replacer) => {
+				return plainToInstance(ScheduleReplacerDto, {
+					etag: replacer.etag,
+					size: replacer.data.byteLength,
+				} as ScheduleReplacerDto);
+			});
+		});
 	}
 
-	@ApiExtraModels(ClearScheduleReplacerResDto)
-	@ApiOperation({
-		description: "Удаление всех замен расписаний",
-		tags: ["schedule", "replacer"],
-	})
-	@ApiOkResponse({
+	@ApiOperation({ description: "Удаление всех замен расписаний" })
+	@ApiResponse({
+		status: HttpStatus.OK,
 		description: "Отчистка прошла успешно",
-		schema: refs(ClearScheduleReplacerResDto)[0],
+		type: ClearScheduleReplacerDto,
 	})
 	@Post("clear")
 	@HttpCode(HttpStatus.OK)
-	@AuthRoles([UserRoleDto.ADMIN])
-	@ResultDto(ClearScheduleReplacerResDto)
-	async clear(): Promise<ClearScheduleReplacerResDto> {
-		const resDto = { count: await this.scheduleReplaceService.clear() };
+	@AuthRoles([UserRole.ADMIN])
+	@ResultDto(ClearScheduleReplacerDto)
+	async clear(): Promise<ClearScheduleReplacerDto> {
+		const response = { count: await this.scheduleReplaceService.clear() };
 
 		await this.scheduleService.refreshCache();
 
-		return resDto;
+		return response;
 	}
 }

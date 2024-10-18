@@ -6,20 +6,15 @@ import {
 	UnauthorizedException,
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
-import {
-	SignInReqDto,
-	SignInResDto,
-	SignUpReqDto,
-	SignUpResDto,
-	ChangePasswordReqDto,
-	UpdateTokenReqDto,
-	UpdateTokenResDto,
-} from "../dto/auth.dto";
 import { UsersService } from "../users/users.service";
 import { genSalt, hash } from "bcrypt";
-import { Prisma, UserRole } from "@prisma/client";
+import { Prisma } from "@prisma/client";
 import { Types } from "mongoose";
-import { UserDto, UserRoleDto } from "../dto/user.dto";
+import { UserRole } from "../users/user-role.enum";
+import { User } from "../users/entity/user.entity";
+import { SignInDto } from "./dto/sign-in.dto";
+import { SignUpDto } from "./dto/sign-up.dto";
+import { ChangePasswordDto } from "./dto/change-password.dto";
 
 @Injectable()
 export class AuthService {
@@ -28,41 +23,48 @@ export class AuthService {
 		private readonly jwtService: JwtService,
 	) {}
 
-	async decodeUserToken(token: string): Promise<UserDto> {
+	/**
+	 * Получение пользователя по его токену
+	 * @param token - jwt токен
+	 * @returns {User} - пользователь
+	 * @throws {UnauthorizedException} - некорректный или недействительный токен
+	 * @throws {UnauthorizedException} - токен указывает на несуществующего пользователя
+	 * @throws {UnauthorizedException} - текущий токен устарел и был обновлён на новый
+	 * @async
+	 */
+	async decodeUserToken(token: string): Promise<User> {
 		const jwtUser: { id: string } | null =
 			await this.jwtService.verifyAsync(token);
 
-		if (jwtUser === null) {
+		const throwError = () => {
 			throw new UnauthorizedException(
 				"Некорректный или недействительный токен",
 			);
-		}
+		};
 
-		const user = await this.usersService
-			.findUnique({ id: jwtUser.id })
-			.then((user) => user as UserDto | null);
+		if (jwtUser === null) throwError();
 
-		if (!user)
-			throw new UnauthorizedException("Не удалось найти пользователя!");
+		const user = await this.usersService.findUnique({ id: jwtUser.id });
 
-		if (user.accessToken !== token) {
-			throw new UnauthorizedException(
-				"Некорректный или недействительный токен",
-			);
-		}
+		if (!user || user.accessToken !== token) throwError();
 
-		return user as UserDto;
+		return user;
 	}
 
-	async signUp(signUpDto: SignUpReqDto): Promise<SignUpResDto> {
-		const group = signUpDto.group.replaceAll(" ", "");
-		const username = signUpDto.username.replaceAll(" ", "");
+	/**
+	 * Регистрация нового пользователя
+	 * @param signUp - данные нового пользователя
+	 * @returns {User} - пользователь
+	 * @throws {NotAcceptableException} - передана недопустимая роль
+	 * @throws {ConflictException} - пользователь с таким именем уже существует
+	 * @async
+	 */
+	async signUp(signUp: SignUpDto): Promise<User> {
+		const group = signUp.group.replaceAll(" ", "");
+		const username = signUp.username.replaceAll(" ", "");
 
-		if (
-			![UserRoleDto.STUDENT, UserRoleDto.TEACHER].includes(signUpDto.role)
-		) {
+		if (![UserRole.STUDENT, UserRole.TEACHER].includes(signUp.role))
 			throw new NotAcceptableException("Передана неизвестная роль");
-		}
 
 		if (await this.usersService.contains({ username: username })) {
 			throw new ConflictException(
@@ -77,31 +79,33 @@ export class AuthService {
 			id: id,
 			username: username,
 			salt: salt,
-			password: await hash(signUpDto.password, salt),
+			password: await hash(signUp.password, salt),
 			accessToken: await this.jwtService.signAsync({
 				id: id,
 			}),
-			role: signUpDto.role as UserRole,
+			role: signUp.role as UserRole,
 			group: group,
-			version: signUpDto.version ?? "1.0.0",
+			version: signUp.version ?? "1.0.0",
 		};
 
-		return this.usersService.create(input).then((user) => {
-			return {
-				id: user.id,
-				accessToken: user.accessToken,
-			};
-		});
+		return await this.usersService.create(input);
 	}
 
-	async signIn(signInDto: SignInReqDto): Promise<SignInResDto> {
+	/**
+	 * Авторизация пользователя
+	 * @param signIn - данные авторизации
+	 * @returns {User} - пользователь
+	 * @throws {UnauthorizedException} - некорректное имя пользователя или пароль
+	 * @async
+	 */
+	async signIn(signIn: SignInDto): Promise<User> {
 		const user = await this.usersService.findUnique({
-			username: signInDto.username.replaceAll(" ", ""),
+			username: signIn.username.replaceAll(" ", ""),
 		});
 
 		if (
 			!user ||
-			user.password !== (await hash(signInDto.password, user.salt))
+			user.password !== (await hash(signIn.password, user.salt))
 		) {
 			throw new UnauthorizedException(
 				"Некорректное имя пользователя или пароль!",
@@ -110,19 +114,24 @@ export class AuthService {
 
 		const accessToken = await this.jwtService.signAsync({ id: user.id });
 
-		await this.usersService.update({
+		return await this.usersService.update({
 			where: { id: user.id },
 			data: { accessToken: accessToken },
 		});
-
-		return { id: user.id, accessToken: accessToken, group: user.group };
 	}
 
-	async updateToken(
-		updateTokenDto: UpdateTokenReqDto,
-	): Promise<UpdateTokenResDto> {
+	/**
+	 * Обновление токена пользователя
+	 * @param oldToken - старый токен
+	 * @returns {User} - пользователь
+	 * @throws {NotFoundException} - некорректный или недействительный токен
+	 * @throws {NotFoundException} - токен указывает на несуществующего пользователя
+	 * @throws {NotFoundException} - текущий токен устарел и был обновлён на новый
+	 * @async
+	 */
+	async updateToken(oldToken: string): Promise<User> {
 		if (
-			!(await this.jwtService.verifyAsync(updateTokenDto.accessToken, {
+			!(await this.jwtService.verifyAsync(oldToken, {
 				ignoreExpiration: true,
 			}))
 		) {
@@ -131,12 +140,10 @@ export class AuthService {
 			);
 		}
 
-		const jwtUser: { id: string } = await this.jwtService.decode(
-			updateTokenDto.accessToken,
-		);
+		const jwtUser: { id: string } = await this.jwtService.decode(oldToken);
 
 		const user = await this.usersService.findUnique({ id: jwtUser.id });
-		if (!user || user.accessToken !== updateTokenDto.accessToken) {
+		if (!user || user.accessToken !== oldToken) {
 			throw new NotFoundException(
 				"Некорректный или недействительный токен!",
 			);
@@ -144,19 +151,25 @@ export class AuthService {
 
 		const accessToken = await this.jwtService.signAsync({ id: user.id });
 
-		await this.usersService.update({
+		return await this.usersService.update({
 			where: { id: user.id },
 			data: { accessToken: accessToken },
 		});
-
-		return { accessToken: accessToken };
 	}
 
+	/**
+	 * Смена пароля пользователя
+	 * @param user - пользователь
+	 * @param changePassword - старый и новый пароли
+	 * @throws {ConflictException} - пароли идентичны
+	 * @throws {UnauthorizedException} - неверный исходный пароль
+	 * @async
+	 */
 	async changePassword(
-		user: UserDto,
-		changePasswordReqDto: ChangePasswordReqDto,
+		user: User,
+		changePassword: ChangePasswordDto,
 	): Promise<void> {
-		const { oldPassword, newPassword } = changePasswordReqDto;
+		const { oldPassword, newPassword } = changePassword;
 
 		if (oldPassword == newPassword)
 			throw new ConflictException("Пароли идентичны");

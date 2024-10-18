@@ -11,7 +11,8 @@ import {
 
 import { firebaseConstants } from "../contants";
 import { UsersService } from "../users/users.service";
-import { UserDto } from "../dto/user.dto";
+
+import { User } from "../users/entity/user.entity";
 
 @Injectable()
 export class FirebaseAdminService implements OnModuleInit {
@@ -40,9 +41,9 @@ export class FirebaseAdminService implements OnModuleInit {
 	}
 
 	async updateToken(
-		user: UserDto,
+		user: User,
 		token: string,
-	): Promise<{ userDto: UserDto; isNew: boolean }> {
+	): Promise<{ userDto: User; isNew: boolean }> {
 		const isNew = user.fcm === null;
 
 		const fcm = !isNew ? user.fcm : { token: token, topics: [] };
@@ -63,7 +64,7 @@ export class FirebaseAdminService implements OnModuleInit {
 		};
 	}
 
-	async unsubscribe(user: UserDto, topics: Set<string>): Promise<UserDto> {
+	async unsubscribe(user: User, topics: Set<string>): Promise<User> {
 		const fcm = user.fcm;
 		const currentTopics = new Set(fcm.topics);
 
@@ -84,10 +85,10 @@ export class FirebaseAdminService implements OnModuleInit {
 	}
 
 	async subscribe(
-		user: UserDto,
+		user: User,
 		topics: Set<string>,
 		force: boolean = false,
-	): Promise<UserDto> {
+	): Promise<User> {
 		const newTopics = new Set([...this.defaultTopics, ...topics]);
 
 		const fcm = user.fcm;
@@ -109,8 +110,8 @@ export class FirebaseAdminService implements OnModuleInit {
 		});
 	}
 
-	async updateApp(userDto: UserDto, version: string): Promise<void> {
-		await this.subscribe(userDto, new Set(), true).then(async (userDto) => {
+	async updateApp(user: User, version: string): Promise<void> {
+		await this.subscribe(user, new Set(), true).then(async (userDto) => {
 			await this.usersService.update({
 				where: { id: userDto.id },
 				data: { version: version },

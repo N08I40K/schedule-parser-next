@@ -7,56 +7,53 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { Prisma } from "@prisma/client";
-import {
-	ChangeGroupReqDto,
-	ChangeUsernameReqDto,
-	UserDto,
-} from "../dto/user.dto";
-import { ScheduleService } from "../schedule/schedule.service";
+import { V1ScheduleService } from "../schedule/v1-schedule.service";
+import { User } from "./entity/user.entity";
+import { ChangeUsernameDto } from "./dto/change-username.dto";
+import { ChangeGroupDto } from "./dto/change-group.dto";
+import { plainToInstance } from "class-transformer";
 
 @Injectable()
 export class UsersService {
 	constructor(
 		private readonly prismaService: PrismaService,
-		@Inject(forwardRef(() => ScheduleService))
-		private readonly scheduleService: ScheduleService,
+		@Inject(forwardRef(() => V1ScheduleService))
+		private readonly scheduleService: V1ScheduleService,
 	) {}
 
-	private static convertToDto = (user: UserDto | null) =>
-		user as UserDto | null;
-
-	async findUnique(
-		where: Prisma.UserWhereUniqueInput,
-	): Promise<UserDto | null> {
-		return this.prismaService.user
-			.findUnique({ where: where })
-			.then(UsersService.convertToDto);
+	async findUnique(where: Prisma.UserWhereUniqueInput): Promise<User | null> {
+		return plainToInstance(
+			User,
+			await this.prismaService.user.findUnique({ where: where }),
+		);
 	}
 
 	async update(params: {
 		where: Prisma.UserWhereUniqueInput;
 		data: Prisma.UserUpdateInput;
-	}): Promise<UserDto> {
-		return this.prismaService.user
-			.update(params)
-			.then(UsersService.convertToDto);
+	}): Promise<User> {
+		return plainToInstance(
+			User,
+			await this.prismaService.user.update(params),
+		);
 	}
 
-	async create(data: Prisma.UserCreateInput): Promise<UserDto> {
-		return this.prismaService.user
-			.create({ data })
-			.then(UsersService.convertToDto);
+	async create(data: Prisma.UserCreateInput): Promise<User> {
+		return plainToInstance(
+			User,
+			await this.prismaService.user.create({ data }),
+		);
 	}
 
 	async contains(where: Prisma.UserWhereUniqueInput): Promise<boolean> {
-		return this.prismaService.user
+		return await this.prismaService.user
 			.count({ where })
 			.then((count) => count > 0);
 	}
 
 	async changeUsername(
-		user: UserDto,
-		changeUsernameDto: ChangeUsernameReqDto,
+		user: User,
+		changeUsernameDto: ChangeUsernameDto,
 	): Promise<void> {
 		if (user.username === changeUsernameDto.username) return;
 
@@ -73,8 +70,8 @@ export class UsersService {
 	}
 
 	async changeGroup(
-		user: UserDto,
-		changeGroupDto: ChangeGroupReqDto,
+		user: User,
+		changeGroupDto: ChangeGroupDto,
 	): Promise<void> {
 		if (user.group === changeGroupDto.group) return;
 

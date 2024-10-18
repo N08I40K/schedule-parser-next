@@ -9,7 +9,7 @@ import { JwtService } from "@nestjs/jwt";
 import { Request } from "express";
 import { UsersService } from "../users/users.service";
 import { Reflector } from "@nestjs/core";
-import { AuthRoles, AuthUnauthorized } from "../auth-role/auth-role.decorator";
+import { AuthRoles, AuthUnauthorized } from "./auth-role.decorator";
 import { isJWT } from "class-validator";
 
 @Injectable()

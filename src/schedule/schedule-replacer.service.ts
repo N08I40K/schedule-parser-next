@@ -1,7 +1,7 @@
 import { Injectable } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
-import { ScheduleReplacerDto } from "../dto/schedule-replacer.dto";
-import { plainToClass } from "class-transformer";
+import { SetScheduleReplacerDto } from "./dto/set-schedule-replacer.dto";
+import { plainToInstance } from "class-transformer";
 
 @Injectable()
 export class ScheduleReplacerService {
@@ -15,13 +15,19 @@ export class ScheduleReplacerService {
 		);
 	}
 
-	async getByEtag(etag: string): Promise<ScheduleReplacerDto | null> {
+	async getByEtag(etag: string): Promise<SetScheduleReplacerDto | null> {
 		const response = await this.prismaService.scheduleReplace.findUnique({
 			where: { etag: etag },
 		});
 		if (response == null) return null;
 
-		return plainToClass(ScheduleReplacerDto, response);
+		return plainToInstance(SetScheduleReplacerDto, response);
+	}
+
+	async getAll(): Promise<Array<SetScheduleReplacerDto>> {
+		const response = await this.prismaService.scheduleReplace.findMany();
+
+		return plainToInstance(SetScheduleReplacerDto, response);
 	}
 
 	async clear(): Promise<number> {

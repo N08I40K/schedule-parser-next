@@ -3,9 +3,10 @@ import { AppModule } from "./app.module";
 import { ValidatorOptions } from "class-validator";
 import { PartialValidationPipe } from "./utility/validation/partial-validation.pipe";
 import { ClassValidatorInterceptor } from "./utility/validation/class-validator.interceptor";
-import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import { RedocModule } from "nest-redoc";
 import { apiConstants, httpsConstants } from "./contants";
 import * as fs from "node:fs";
+import { VersioningType } from "@nestjs/common";
 
 async function bootstrap() {
 	const app = await NestFactory.create(AppModule, {
@@ -23,19 +24,26 @@ async function bootstrap() {
 	app.useGlobalInterceptors(new ClassValidatorInterceptor(validatorOptions));
 	app.enableCors();
 
-	const swaggerConfig = new DocumentBuilder()
+	app.setGlobalPrefix("api");
+	app.enableVersioning({
+		type: VersioningType.URI,
+	});
+
+	const swaggerConfig = RedocModule.createDocumentBuilder()
 		.setTitle("Schedule Parser")
 		.setDescription("Парсер расписания")
 		.setVersion(apiConstants.version)
 		.build();
-	const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+	const swaggerDocument = RedocModule.createDocument(app, swaggerConfig, {
+		deepScanRoutes: true,
+	});
 	swaggerDocument.servers = [
 		{
 			url: `https://localhost:${apiConstants.port}`,
 			description: "Локальный сервер для разработки",
 		},
 	];
-	SwaggerModule.setup("api-docs", app, swaggerDocument);
+	await RedocModule.setup("api-docs", app, swaggerDocument, {});
 
 	await app.listen(apiConstants.port);
 }

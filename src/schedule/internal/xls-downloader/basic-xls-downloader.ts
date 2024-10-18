@@ -1,147 +1,120 @@
 import {
-	XlsDownloaderBase,
-	XlsDownloaderCacheMode,
-	XlsDownloaderResult,
-} from "./xls-downloader.base";
+	FetchError,
+	FetchResult,
+	XlsDownloaderInterface,
+} from "./xls-downloader.interface";
 import axios from "axios";
-import { JSDOM } from "jsdom";
 import {
 	NotAcceptableException,
 	ServiceUnavailableException,
 } from "@nestjs/common";
-import { ScheduleReplacerService } from "../../schedule-replacer.service";
-import { Error } from "mongoose";
-import * as crypto from "crypto";
 
-export class BasicXlsDownloader extends XlsDownloaderBase {
-	cache: XlsDownloaderResult | null = null;
-	preparedData: { downloadLink: string; updateDate: string } | null = null;
+export class BasicXlsDownloader implements XlsDownloaderInterface {
+	private url: string | null = null;
 
-	private cacheHash: string = "0000000000000000000000000000000000000000";
-
-	private lastUpdate: number = 0;
-	private scheduleReplacerService: ScheduleReplacerService | null = null;
-
-	setScheduleReplacerService(service: ScheduleReplacerService) {
-		this.scheduleReplacerService = service;
-	}
-
-	private async getDOM(preparedData: any): Promise<JSDOM | null> {
-		try {
-			return new JSDOM(atob(preparedData), {
-				url: this.url,
-				contentType: "text/html",
-			});
-		} catch {
-			throw new NotAcceptableException(
-				"Передан некорректный код страницы",
-			);
-		}
-	}
-
-	private parseData(dom: JSDOM): {
-		downloadLink: string;
-		updateDate: string;
-	} {
-		try {
-			const scheduleBlock = dom.window.document.getElementById("cont-i");
-			if (scheduleBlock === null)
-				// noinspection ExceptionCaughtLocallyJS
-				throw new Error("Не удалось найти блок расписаний!");
-
-			const schedules = scheduleBlock.getElementsByTagName("div");
-			if (schedules === null || schedules.length === 0)
-				// noinspection ExceptionCaughtLocallyJS
-				throw new Error("Не удалось найти строку с расписанием!");
-
-			const poltavskaya = schedules[0];
-			const link = poltavskaya.getElementsByTagName("a")[0]!;
-
-			const spans = poltavskaya.getElementsByTagName("span");
-			const updateDate = spans[3].textContent!.trimStart();
-
-			return {
-				downloadLink: link.href,
-				updateDate: updateDate,
-			};
-		} catch (exception) {
-			console.error(exception);
-			throw new NotAcceptableException(
-				"Передан некорректный код страницы",
-			);
-		}
-	}
-
-	public async getCachedXLS(): Promise<XlsDownloaderResult | null> {
-		if (this.cache === null) return null;
-
-		this.cache.new = this.cacheMode === XlsDownloaderCacheMode.HARD;
-
-		return this.cache;
-	}
-
-	public isUpdateRequired(): boolean {
-		return (Date.now() - this.lastUpdate) / 1000 / 60 > 5;
-	}
-
-	public async setPreparedData(preparedData: string): Promise<void> {
-		const dom = await this.getDOM(preparedData);
-		this.preparedData = this.parseData(dom);
-
-		this.lastUpdate = Date.now();
-	}
-
-	public async downloadXLS(): Promise<XlsDownloaderResult> {
-		if (
-			this.cacheMode === XlsDownloaderCacheMode.HARD &&
-			this.cache !== null
-		)
-			return this.getCachedXLS();
-
-		if (!this.preparedData) {
+	public async fetch(head: boolean): Promise<FetchResult> {
+		if (this.url === null) {
 			throw new ServiceUnavailableException(
 				"Отсутствует начальная ссылка на скачивание!",
 			);
 		}
 
-		// noinspection Annotator
-		const response = await axios.get(this.preparedData.downloadLink, {
-			responseType: "arraybuffer",
-		});
+		return BasicXlsDownloader.fetchSpecified(this.url, head);
+	}
+
+	/**
+	 * Проверяет указанную ссылку на работоспособность
+	 * @param {string} url - ссылка на скачивание
+	 * @param {boolean} head - не скачивать файл
+	 * @returns {FetchFailedResult} - если запрос не удался или он не соответствует ожиданиям
+	 * @returns {FetchSuccessResult} - если запрос удался
+	 * @static
+	 * @async
+	 */
+	static async fetchSpecified(
+		url: string,
+		head: boolean,
+	): Promise<FetchResult> {
+		const response = await (head
+			? axios.head(url)
+			: axios.get(url, { responseType: "arraybuffer" }));
+
 		if (response.status !== 200) {
-			throw new Error(`Не удалось получить excel файл!
-Статус код: ${response.status}
-${response.statusText}`);
+			console.error(`${response.status} ${response.statusText}`);
+
+			return {
+				type: "fail",
+				error: FetchError.BAD_STATUS_CODE,
+				statusCode: response.status,
+				statusText: response.statusText,
+			};
 		}
 
-		const replacer = await this.scheduleReplacerService.getByEtag(
-			response.headers["etag"]!,
-		);
+		type HeaderValue = string | undefined;
 
-		const fileData: ArrayBuffer = replacer
-			? replacer.data
-			: response.data.buffer;
+		const contentType: HeaderValue = response.headers["content-type"];
+		const etag: HeaderValue = response.headers["etag"];
+		const uploadedAt: HeaderValue = response.headers["last-modified"];
+		const requestedAt: HeaderValue = response.headers["date"];
 
-		const fileDataHash = crypto
-			.createHash("sha1")
-			.update(Buffer.from(fileData).toString("base64"))
-			.digest("hex");
+		if (!contentType || !etag || !uploadedAt || !requestedAt) {
+			return {
+				type: "fail",
+				error: FetchError.BAD_HEADERS,
+			};
+		}
 
-		const result: XlsDownloaderResult = {
-			fileData: fileData,
-			updateDate: this.preparedData.updateDate,
-			etag: response.headers["etag"],
-			new:
-				this.cacheMode === XlsDownloaderCacheMode.NONE
-					? true
-					: this.cacheHash !== fileDataHash,
-			updateRequired: this.isUpdateRequired(),
+		if (contentType !== "application/vnd.ms-excel") {
+			return {
+				type: "fail",
+				error: FetchError.INCORRECT_FILE_TYPE,
+				contentType: contentType,
+			};
+		}
+
+		return {
+			type: "success",
+			etag: etag,
+			uploadedAt: new Date(uploadedAt),
+			requestedAt: new Date(requestedAt),
+			data: head ? undefined : response.data.buffer,
 		};
+	}
 
-		this.cacheHash = fileDataHash;
+	/**
+	 * Проверяет FetchResult на ошибки
+	 * @param {FetchResult} fetchResult - результат
+	 * @throws {NotAcceptableException} - некорректный статус-код
+	 * @throws {NotAcceptableException} - некорректный тип файла
+	 * @throws {NotAcceptableException} - отсутствуют требуемые заголовки
+	 * @static
+	 */
+	public verifyFetchResult(fetchResult: FetchResult): void {
+		if (fetchResult.type === "fail") {
+			switch (fetchResult.error) {
+				case FetchError.BAD_STATUS_CODE:
+					console.error(
+						`${fetchResult.statusCode}: ${fetchResult.statusText}`,
+					);
+					throw new NotAcceptableException(
+						`Не удалось получить информацию о файле, так как сервер вернул статус-код ${fetchResult.statusCode}!`,
+					);
+				case FetchError.INCORRECT_FILE_TYPE:
+					throw new NotAcceptableException(
+						`Тип файла ${fetchResult.contentType} на который указывает ссылка не равен application/vnd.ms-excel!`,
+					);
+				case FetchError.BAD_HEADERS:
+					throw new NotAcceptableException(
+						`Не удалось получить информацию о файле, так как сервер не вернул ожидаемые заголовки!`,
+					);
+			}
+		}
+	}
 
-		if (this.cacheMode !== XlsDownloaderCacheMode.NONE) this.cache = result;
+	public async setDownloadUrl(url: string): Promise<void> {
+		const result = await BasicXlsDownloader.fetchSpecified(url, true);
+		this.verifyFetchResult(result);
 
-		return result;
+		this.url = url;
 	}
 }

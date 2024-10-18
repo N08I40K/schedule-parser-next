@@ -10,26 +10,40 @@ import {
 } from "@nestjs/common";
 import { AuthGuard } from "../auth/auth.guard";
 import { UserToken } from "../auth/auth.decorator";
-import { UserFromTokenPipe } from "../auth/auth.pipe";
-import { UserDto } from "../dto/user.dto";
+import { UserPipe } from "../auth/auth.pipe";
 import { ResultDto } from "../utility/validation/class-validator.interceptor";
 import { FirebaseAdminService } from "./firebase-admin.service";
-import { FcmPostUpdateDto } from "../dto/fcm.dto";
+import { FcmPostUpdateDto } from "./dto/fcm-post-update.dto";
 import { isSemVer } from "class-validator";
+import { User } from "../users/entity/user.entity";
+import {
+	ApiBearerAuth,
+	ApiBody,
+	ApiOperation,
+	ApiResponse,
+	ApiTags,
+} from "@nestjs/swagger";
 
-@Controller("api/v1/fcm")
+@ApiTags("v1/fcm")
+@ApiBearerAuth()
+@Controller({ path: "fcm", version: "1" })
 @UseGuards(AuthGuard)
 export class FirebaseAdminController {
 	private readonly oldTopics = new Set(["app-update", "schedule-update"]);
 
 	constructor(private readonly firebaseAdminService: FirebaseAdminService) {}
 
+	@ApiOperation({ summary: "Установка FCM токена пользователем" })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description: "Установка токена удалась",
+	})
 	@Post("set-token/:token")
 	@HttpCode(HttpStatus.OK)
 	@ResultDto(null)
 	async setToken(
 		@Param("token") token: string,
-		@UserToken(UserFromTokenPipe) user: UserDto,
+		@UserToken(UserPipe) user: User,
 	): Promise<void> {
 		if (user.fcm?.token === token) return;
 
@@ -44,13 +58,18 @@ export class FirebaseAdminController {
 			);
 	}
 
+	@ApiOperation({ summary: "Установка текущей версии приложения" })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description: "Установка версии удалась",
+	})
 	@Post("update-callback/:version")
 	@HttpCode(HttpStatus.OK)
 	@ResultDto(null)
 	async updateCallback(
-		@UserToken(UserFromTokenPipe) userDto: UserDto,
 		@Param("version") version: string,
-	) {
+		@UserToken(UserPipe) userDto: User,
+	): Promise<void> {
 		if (!isSemVer(version)) {
 			throw new BadRequestException(
 				"version must be a Semantic Versioning Specification",
@@ -60,18 +79,26 @@ export class FirebaseAdminController {
 		await this.firebaseAdminService.updateApp(userDto, version);
 	}
 
+	@ApiOperation({
+		summary: "Уведомление пользователей о выходе новой версии приложения",
+	})
+	@ApiBody({ type: FcmPostUpdateDto })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description: "Уведомление отправлено",
+	})
 	@Post("post-update")
 	@HttpCode(HttpStatus.OK)
 	@ResultDto(null)
-	async postUpdate(@Body() postUpdateDto: FcmPostUpdateDto): Promise<void> {
+	async postUpdate(@Body() reqDto: FcmPostUpdateDto): Promise<void> {
 		await this.firebaseAdminService.sendByTopic("common", {
 			android: {
 				priority: "high",
 			},
 			data: {
 				type: "app-update",
-				version: postUpdateDto.version,
-				downloadLink: postUpdateDto.downloadLink,
+				version: reqDto.version,
+				downloadLink: reqDto.downloadLink,
 			},
 		});
 	}

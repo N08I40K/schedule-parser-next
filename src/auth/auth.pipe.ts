@@ -5,16 +5,17 @@ import {
 } from "@nestjs/common";
 import { JwtService } from "@nestjs/jwt";
 import { UsersService } from "../users/users.service";
-import { UserDto } from "../dto/user.dto";
+
+import { User } from "../users/entity/user.entity";
 
 @Injectable()
-export class UserFromTokenPipe implements PipeTransform {
+export class UserPipe implements PipeTransform {
 	constructor(
 		private readonly jwtService: JwtService,
 		private readonly usersService: UsersService,
 	) {}
 
-	async transform(token: string): Promise<UserDto> {
+	async transform(token: string): Promise<User> {
 		const jwtUser: { id: string } = await this.jwtService.decode(token);
 
 		if (!jwtUser)
@@ -24,6 +25,6 @@ export class UserFromTokenPipe implements PipeTransform {
 		if (!user)
 			throw new UnauthorizedException("Передан некорректный токен!");
 
-		return user as UserDto;
+		return user as User;
 	}
 }
