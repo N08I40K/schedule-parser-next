@@ -19,7 +19,7 @@ export class V2LessonSubGroupDto {
 
 	/**
 	 * ФИО преподавателя
-	 * @example "Хомченко Н.Е."
+	 * @example "Хомченко Н. Е."
 	 */
 	@IsString()
 	teacher: string;
