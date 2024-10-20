@@ -201,8 +201,6 @@ export class V1ScheduleService {
 		const dom = await this.getDOM(siteMainPageDto.mainPage);
 		const url = this.parseData(dom);
 
-		console.log(url);
-
 		return await this.updateDownloadUrl(url);
 	}
 

@@ -77,11 +77,11 @@ export class V2ScheduleService {
 		this.cacheUpdatedAt = new Date();
 
 		const oldHash = this.cacheHash;
-		this.cacheHash = objectHash.sha1(schedule.groups);
+		this.cacheHash = objectHash.sha1(schedule.etag);
 
 		if (this.cacheHash !== oldHash) {
-			if (this.scheduleUpdatedAt.valueOf() !== 0 && !silent) {
-				await this.v1ScheduleService.refreshCache(true);
+			if (this.scheduleUpdatedAt.valueOf() !== 0) {
+				if (!silent) await this.v1ScheduleService.refreshCache(true);
 
 				const isReplaced = await this.scheduleReplacerService.hasByEtag(
 					schedule.etag,
