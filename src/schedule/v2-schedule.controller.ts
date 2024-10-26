@@ -17,7 +17,7 @@ import {
 	ApiResponse,
 	ApiTags,
 } from "@nestjs/swagger";
-import { AuthRoles } from "../auth/auth-role.decorator";
+import { AuthRoles, AuthUnauthorized } from "../auth/auth-role.decorator";
 import { UserToken } from "../auth/auth.decorator";
 import { UserPipe } from "../auth/auth.pipe";
 import { V2ScheduleService } from "./v2-schedule.service";
@@ -92,6 +92,7 @@ export class V2ScheduleController {
 	@ResultDto(V2ScheduleGroupNamesDto)
 	@CacheKey("v2-schedule-group-names")
 	@UseInterceptors(CacheInterceptor)
+	@AuthUnauthorized()
 	@HttpCode(HttpStatus.OK)
 	@Get("group-names")
 	async getGroupNames(): Promise<V2ScheduleGroupNamesDto> {
