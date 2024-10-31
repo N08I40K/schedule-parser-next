@@ -13,6 +13,9 @@ import { firebaseConstants } from "../contants";
 import { UsersService } from "../users/users.service";
 
 import { User } from "../users/entity/user.entity";
+import { TokenMessage } from "firebase-admin/lib/messaging/messaging-api";
+import { FcmUser } from "../users/entity/fcm-user.entity";
+import { plainToInstance } from "class-transformer";
 
 @Injectable()
 export class FirebaseAdminService implements OnModuleInit {
@@ -37,7 +40,22 @@ export class FirebaseAdminService implements OnModuleInit {
 		const topicMessage = message as TopicMessage;
 		topicMessage.topic = topic;
 
-		await this.messaging.send(topicMessage);
+		await this.send(topicMessage);
+	}
+
+	async send(message: TopicMessage | TokenMessage): Promise<void> {
+		await this.messaging.send(message);
+	}
+
+	private getFcmOrDefault(user: User, token: string): FcmUser {
+		if (!user.fcm) {
+			return plainToInstance(FcmUser, {
+				token: token,
+				topics: [],
+			} as FcmUser);
+		}
+
+		return user.fcm;
 	}
 
 	async updateToken(
@@ -45,8 +63,8 @@ export class FirebaseAdminService implements OnModuleInit {
 		token: string,
 	): Promise<{ userDto: User; isNew: boolean }> {
 		const isNew = user.fcm === null;
+		const fcm = this.getFcmOrDefault(user, token);
 
-		const fcm = !isNew ? user.fcm : { token: token, topics: [] };
 		if (!isNew) {
 			if (fcm.token === token) return { userDto: user, isNew: false };
 
@@ -65,18 +83,20 @@ export class FirebaseAdminService implements OnModuleInit {
 	}
 
 	async unsubscribe(user: User, topics: Set<string>): Promise<User> {
+		if (!user.fcm) throw new Error("User does not have fcm data!");
+
 		const fcm = user.fcm;
-		const currentTopics = new Set(fcm.topics);
+		const newTopics = new Set<string>();
 
 		for (const topic of topics) {
 			if (!fcm.topics.includes(topic)) continue;
 
 			await this.messaging.unsubscribeFromTopic(fcm.token, topic);
-			currentTopics.delete(topic);
+			newTopics.add(topic);
 		}
-		if (currentTopics.size === fcm.topics.length) return user;
+		if (newTopics.size === fcm.topics.length) return user;
 
-		fcm.topics = Array.from(currentTopics);
+		fcm.topics = Array.from(newTopics);
 
 		return await this.usersService.update({
 			where: { id: user.id },
@@ -89,20 +109,22 @@ export class FirebaseAdminService implements OnModuleInit {
 		topics: Set<string>,
 		force: boolean = false,
 	): Promise<User> {
-		const newTopics = new Set([...this.defaultTopics, ...topics]);
+		const additionalTopics = new Set([...this.defaultTopics, ...topics]);
 
 		const fcm = user.fcm;
-		const currentTopics = new Set(fcm.topics);
+		const newTopics = new Set(fcm.topics);
 
-		for (const topic of newTopics) {
-			if (fcm.topics.includes(topic) && !force) continue;
+		for (const topic of additionalTopics) {
+			if (force)
+				await this.messaging.unsubscribeFromTopic(fcm.token, topic);
+			else if (fcm.topics.includes(topic)) continue;
+			else newTopics.add(topic);
 
 			await this.messaging.subscribeToTopic(fcm.token, topic);
-			currentTopics.add(topic);
 		}
-		if (currentTopics.size === fcm.topics.length) return user;
+		if (newTopics.size === fcm.topics.length) return user;
 
-		fcm.topics = Array.from(currentTopics);
+		fcm.topics = Array.from(newTopics);
 
 		return await this.usersService.update({
 			where: { id: user.id },

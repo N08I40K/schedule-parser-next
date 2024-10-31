@@ -23,6 +23,12 @@ import {
 	ApiResponse,
 	ApiTags,
 } from "@nestjs/swagger";
+import { AuthRoles } from "../auth/auth-role.decorator";
+import { UserRole } from "../users/user-role.enum";
+import {
+	TokenMessage,
+	TopicMessage,
+} from "firebase-admin/lib/messaging/messaging-api";
 
 @ApiTags("v1/fcm")
 @ApiBearerAuth()
@@ -32,6 +38,16 @@ export class FirebaseAdminController {
 	private readonly oldTopics = new Set(["app-update", "schedule-update"]);
 
 	constructor(private readonly firebaseAdminService: FirebaseAdminService) {}
+
+	@ApiOperation({ summary: "Отправка уведомления" })
+	@ApiResponse({ status: HttpStatus.OK })
+	@Post("post")
+	@HttpCode(HttpStatus.OK)
+	@ResultDto(null)
+	@AuthRoles([UserRole.ADMIN])
+	async post(@Body() message: TopicMessage | TokenMessage) {
+		await this.firebaseAdminService.send(message);
+	}
 
 	@ApiOperation({ summary: "Установка FCM токена пользователем" })
 	@ApiResponse({

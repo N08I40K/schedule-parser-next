@@ -514,11 +514,6 @@ export class V2ScheduleParser {
 	): Array<V2LessonDto> {
 		const row = time.xlsxRange.s.r;
 
-		if (typeof column !== "number") {
-			console.log(typeof column);
-			console.log(column);
-		}
-
 		// name
 		const rawName = trimAll(
 			V2ScheduleParser.getCellData(workSheet, row, column)?.replaceAll(
