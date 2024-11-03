@@ -20,6 +20,8 @@ import * as objectHash from "object-hash";
 import { V2CacheStatusDto } from "./dto/v2/v2-cache-status.dto";
 import { V2GroupScheduleDto } from "./dto/v2/v2-group-schedule.dto";
 import { V2ScheduleGroupNamesDto } from "./dto/v2/v2-schedule-group-names.dto";
+import { V2TeacherScheduleDto } from "./dto/v2/v2-teacher-schedule.dto";
+import { V2ScheduleTeacherNamesDto } from "./dto/v2/v2-schedule-teacher-names.dto";
 
 @Injectable()
 export class V2ScheduleService {
@@ -107,14 +109,14 @@ export class V2ScheduleService {
 		return {
 			updatedAt: this.cacheUpdatedAt,
 			groups: sourceSchedule.groups,
-			updatedGroups: sourceSchedule.updatedGroups,
+			updatedGroups: sourceSchedule.updatedGroups ?? [],
 		};
 	}
 
-	async getGroup(group: string): Promise<V2GroupScheduleDto> {
+	async getGroup(name: string): Promise<V2GroupScheduleDto> {
 		const schedule = await this.getSourceSchedule();
 
-		if (schedule.groups[group] === undefined) {
+		if (schedule.groups[name] === undefined) {
 			throw new NotFoundException(
 				"Группы с таким названием не существует!",
 			);
@@ -122,8 +124,8 @@ export class V2ScheduleService {
 
 		return {
 			updatedAt: this.cacheUpdatedAt,
-			group: schedule.groups[group],
-			updated: schedule.updatedGroups[group] ?? [],
+			group: schedule.groups[name],
+			updated: schedule.updatedGroups[name] ?? [],
 		};
 	}
 
@@ -131,9 +133,36 @@ export class V2ScheduleService {
 		const schedule = await this.getSourceSchedule();
 		const names: Array<string> = [];
 
-		for (const groupName in schedule.groups) names.push(groupName);
+		for (const name in schedule.groups) names.push(name);
 
 		return plainToInstance(V2ScheduleGroupNamesDto, {
+			names: names,
+		});
+	}
+
+	async getTeacher(name: string): Promise<V2TeacherScheduleDto> {
+		const schedule = await this.getSourceSchedule();
+
+		if (schedule.teachers[name] === undefined) {
+			throw new NotFoundException(
+				"Преподавателя с таким ФИО не существует!",
+			);
+		}
+
+		return {
+			updatedAt: this.cacheUpdatedAt,
+			teacher: schedule.teachers[name],
+			updated: schedule.updatedGroups[name] ?? [],
+		};
+	}
+
+	async getTeacherNames(): Promise<V2ScheduleTeacherNamesDto> {
+		const schedule = await this.getSourceSchedule();
+		const names: Array<string> = [];
+
+		for (const name in schedule.teachers) names.push(name);
+
+		return plainToInstance(V2ScheduleTeacherNamesDto, {
 			names: names,
 		});
 	}

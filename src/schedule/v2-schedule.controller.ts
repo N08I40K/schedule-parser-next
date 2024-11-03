@@ -3,7 +3,7 @@ import {
 	Controller,
 	Get,
 	HttpCode,
-	HttpStatus,
+	HttpStatus, Param,
 	Patch,
 	UseGuards,
 	UseInterceptors,
@@ -31,6 +31,8 @@ import { V2UpdateDownloadUrlDto } from "./dto/v2/v2-update-download-url.dto";
 import { V2GroupScheduleByNameDto } from "./dto/v2/v2-group-schedule-by-name.dto";
 import { V2GroupScheduleDto } from "./dto/v2/v2-group-schedule.dto";
 import { V2ScheduleGroupNamesDto } from "./dto/v2/v2-schedule-group-names.dto";
+import { V2TeacherScheduleDto } from "./dto/v2/v2-teacher-schedule.dto";
+import { V2ScheduleTeacherNamesDto } from "./dto/v2/v2-schedule-teacher-names.dto";
 
 @ApiTags("v2/schedule")
 @ApiBearerAuth()
@@ -85,10 +87,6 @@ export class V2ScheduleController {
 		description: "Список получен успешно",
 		type: V2ScheduleGroupNamesDto,
 	})
-	@ApiResponse({
-		status: HttpStatus.NOT_FOUND,
-		description: "Требуемая группа не найдена",
-	})
 	@ResultDto(V2ScheduleGroupNamesDto)
 	@CacheKey("v2-schedule-group-names")
 	@UseInterceptors(CacheInterceptor)
@@ -97,6 +95,42 @@ export class V2ScheduleController {
 	@Get("group-names")
 	async getGroupNames(): Promise<V2ScheduleGroupNamesDto> {
 		return await this.scheduleService.getGroupNames();
+	}
+
+	@ApiOperation({ summary: "Получение расписания преподавателя" })
+	@ApiBody({ type: V2GroupScheduleByNameDto })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description: "Расписание получено успешно",
+		type: V2TeacherScheduleDto,
+	})
+	@ApiResponse({
+		status: HttpStatus.NOT_FOUND,
+		description: "Требуемый преподаватель не найден",
+	})
+	@ResultDto(V2TeacherScheduleDto)
+	@HttpCode(HttpStatus.OK)
+	@Get("teacher/:name")
+	async getTeacherSchedule(
+		@Param("name") name: string,
+	): Promise<V2TeacherScheduleDto> {
+		return await this.scheduleService.getTeacher(name);
+	}
+
+	@ApiOperation({ summary: "Получение списка ФИО преподавателей" })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description: "Список получен успешно",
+		type: V2ScheduleTeacherNamesDto,
+	})
+	@ResultDto(V2ScheduleTeacherNamesDto)
+	@CacheKey("v2-schedule-teacher-names")
+	@UseInterceptors(CacheInterceptor)
+	@AuthUnauthorized()
+	@HttpCode(HttpStatus.OK)
+	@Get("teacher-names")
+	async getTeacherNames(): Promise<V2ScheduleTeacherNamesDto> {
+		return await this.scheduleService.getTeacherNames();
 	}
 
 	@ApiOperation({ summary: "Обновление основной страницы политехникума" })

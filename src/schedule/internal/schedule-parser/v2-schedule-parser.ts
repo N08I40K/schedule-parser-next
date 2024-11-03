@@ -13,6 +13,9 @@ import { V2DayDto } from "../../dto/v2/v2-day.dto";
 import { V2GroupDto } from "../../dto/v2/v2-group.dto";
 import * as assert from "node:assert";
 import { ScheduleReplacerService } from "../../schedule-replacer.service";
+import { V2TeacherDto } from "../../dto/v2/v2-teacher.dto";
+import { V2TeacherDayDto } from "../../dto/v2/v2-teacher-day.dto";
+import { V2TeacherLessonDto } from "../../dto/v2/v2-teacher-lesson.dto";
 
 type InternalId = {
 	/**
@@ -81,10 +84,22 @@ export class V2ScheduleParseResult {
 	groups: Array<V2GroupDto>;
 
 	/**
+	 * Расписание преподавателей в виде списка.
+	 * Ключ - ФИО преподавателя
+	 */
+	teachers: Array<V2TeacherDto>;
+
+	/**
 	 * Список групп у которых было обновлено расписание с момента последнего обновления файла.
 	 * Ключ - название группы.
 	 */
 	updatedGroups: Array<Array<number>>;
+
+	/**
+	 * Список преподавателей у которых было обновлено расписание с момента последнего обновления файла.
+	 * Ключ - ФИО преподавателя.
+	 */
+	updatedTeachers: Array<Array<number>>;
 }
 
 export class V2ScheduleParser {
@@ -323,6 +338,76 @@ export class V2ScheduleParser {
 		return this.xlsDownloader;
 	}
 
+	private static convertGroupsToTeachers(
+		groups: Array<V2GroupDto>,
+	): Array<V2TeacherDto> {
+		const result: Array<V2TeacherDto> = [];
+
+		for (const groupName in groups) {
+			const group = groups[groupName];
+
+			for (const day of group.days) {
+				for (const lesson of day.lessons) {
+					if (lesson.type !== V2LessonType.DEFAULT) continue;
+
+					for (const subGroup of lesson.subGroups) {
+						let teacherDto: V2TeacherDto = result[subGroup.teacher];
+
+						if (!teacherDto) {
+							teacherDto = result[subGroup.teacher] =
+								new V2TeacherDto();
+
+							teacherDto.name = subGroup.teacher;
+							teacherDto.days = [];
+						}
+
+						let teacherDay: V2TeacherDayDto =
+							teacherDto.days[day.name];
+
+						if (!teacherDay) {
+							teacherDay = teacherDto.days[day.name] =
+								new V2TeacherDayDto();
+
+							// TODO: Что это блять такое?
+							// noinspection JSConstantReassignment
+							teacherDay.name = day.name;
+							teacherDay.date = day.date;
+							teacherDay.lessons = [];
+						}
+
+						const teacherLesson = structuredClone(
+							lesson,
+						) as V2TeacherLessonDto;
+						teacherLesson.group = groupName;
+
+						teacherDay.lessons.push(teacherLesson);
+					}
+				}
+			}
+		}
+
+		for (const teacherName in result) {
+			const teacher = result[teacherName];
+
+			const days = teacher.days;
+
+			for (const dayName in days) {
+				const day = days[dayName];
+				delete days[dayName];
+
+				day.lessons.sort(
+					(a, b) => a.time.start.valueOf() - b.time.start.valueOf(),
+				);
+
+				days.push(day);
+			}
+
+			days.sort((a, b) => a.date.valueOf() - b.date.valueOf());
+		}
+
+		return result;
+	}
+
 	/**
 	 * Возвращает текущее расписание
 	 * @returns {V2ScheduleParseResult} - расписание
@@ -462,11 +547,6 @@ export class V2ScheduleParser {
 				}
 
 				for (const time of dayTimes) {
-					// if (day.name === "Четверг" && group.name === "ИС-214/23") {
-					// 	console.log("-------------------");
-					// 	console.log(groupSkeleton.column);
-					// 	console.log(time.xlsxRange);
-					// }
 					const lessons = V2ScheduleParser.parseLesson(
 						workSheet,
 						day,
@@ -491,17 +571,32 @@ export class V2ScheduleParser {
 			groups,
 		);
 
+		const teachers = V2ScheduleParser.convertGroupsToTeachers(groups);
+
+		const updatedTeachers = V2ScheduleParser.getUpdatedTeachers(
+			this.lastResult?.teachers,
+			teachers,
+		);
+
 		return (this.lastResult = {
 			downloadedAt: headData.requestedAt,
 			uploadedAt: headData.uploadedAt,
 
 			etag: headData.etag,
 			replacerId: replacer?.id,
+
 			groups: groups,
+			teachers: teachers,
+
 			updatedGroups:
 				updatedGroups.length === 0
 					? (this.lastResult?.updatedGroups ?? [])
 					: updatedGroups,
+
+			updatedTeachers:
+				updatedTeachers.length === 0
+					? (this.lastResult?.updatedTeachers ?? [])
+					: updatedTeachers,
 		});
 	}
 
@@ -646,9 +741,9 @@ export class V2ScheduleParser {
 
 		const updatedGroups = [];
 
-		for (const groupName in cachedGroups) {
-			const cachedGroup = cachedGroups[groupName];
-			const currentGroup = currentGroups[groupName];
+		for (const name in cachedGroups) {
+			const cachedGroup = cachedGroups[name];
+			const currentGroup = currentGroups[name];
 
 			const affectedGroupDays: Array<number> = [];
 
@@ -657,12 +752,40 @@ export class V2ScheduleParser {
 					objectHash.sha1(currentGroup.days[dayIdx]) !==
 					objectHash.sha1(cachedGroup.days[dayIdx])
 				)
-					affectedGroupDays.push(Number.parseInt(dayIdx));
+					affectedGroupDays.push(+dayIdx);
 			}
 
-			updatedGroups[groupName] = affectedGroupDays;
+			updatedGroups[name] = affectedGroupDays;
 		}
 
 		return updatedGroups;
+	}
+
+	private static getUpdatedTeachers(
+		cachedTeachers: Array<V2TeacherDto> | null,
+		currentTeachers: Array<V2TeacherDto>,
+	): Array<Array<number>> {
+		if (!cachedTeachers) return [];
+
+		const updatedTeachers = [];
+
+		for (const name in cachedTeachers) {
+			const cachedTeacher = cachedTeachers[name];
+			const currentTeacher = currentTeachers[name];
+
+			const affectedTeacherDays: Array<number> = [];
+
+			for (const dayIdx in currentTeacher.days) {
+				if (
+					objectHash.sha1(currentTeacher.days[dayIdx]) !==
+					objectHash.sha1(cachedTeacher.days[dayIdx])
+				)
+					affectedTeacherDays.push(+dayIdx);
+			}
+
+			updatedTeachers[name] = affectedTeacherDays;
+		}
+
+		return updatedTeachers;
 	}
 }

@@ -10,7 +10,7 @@ import { V2LessonDto } from "./v2-lesson.dto";
 export class V2DayDto {
 	/**
 	 * День недели
-	 * @example Понедельник
+	 * @example "Понедельник"
 	 */
 	@IsString()
 	name: string;
