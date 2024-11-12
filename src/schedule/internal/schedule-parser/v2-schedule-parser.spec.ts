@@ -42,21 +42,10 @@ describe("V2ScheduleParser", () => {
 		expect(name.length).toBeGreaterThan(0);
 	};
 
-	describe("Старое расписание", () => {
+	describe("Расписание", () => {
 		beforeEach(async () => {
 			await setLink(
-				"https://politehnikum-eng.ru/2024/poltavskaja_06_s_07_po_13_10.xls",
-			);
-		});
-
-		it("Должен вернуть расписание", defaultTest);
-		it("Название дня не должно быть пустым или null", nameTest);
-	});
-
-	describe("Новое расписание", () => {
-		beforeEach(async () => {
-			await setLink(
-				"https://politehnikum-eng.ru/2024/poltavskaja_07_s_14_po_20_10-8-1-.xls",
+				"https://politehnikum-eng.ru/2024/poltavskaja_11_s_11_11_po_17_11-5-.xls",
 			);
 		});
 
@@ -111,6 +100,16 @@ describe("V2ScheduleParser", () => {
 			expect(lastLessonName).toBe(
 				"МДК.05.01 Проектирование и дизайн информационных систем",
 			);
+		});
+
+		it("Суббота не должна отсутствовать", async () => {
+			const schedule = await parser.getSchedule();
+			expect(schedule).toBeDefined();
+
+			const group: V2GroupDto | undefined = schedule.groups["ИС-214/23"];
+			expect(group).toBeDefined();
+
+			expect(group.days.length).toBe(6);
 		});
 	});
 });

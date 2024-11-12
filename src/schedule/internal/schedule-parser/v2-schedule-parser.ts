@@ -303,16 +303,11 @@ export class V2ScheduleParser {
 				++row;
 			}
 
-			if (
-				days.length == 0 ||
-				!days[days.length - 1].name.startsWith("Суббота")
-			) {
-				const dayMonthIdx = /[А-Яа-я]+\s(\d+)\.\d+\.\d+/.exec(
-					trimAll(dayName),
-				);
+			const dayMonthIdx = /[А-Яа-я]+\s(\d+)\.\d+\.\d+/.exec(
+				trimAll(dayName),
+			);
 
-				if (dayMonthIdx === null) continue;
-			}
+			if (dayMonthIdx === null) continue;
 
 			days.push({
 				row: row,
@@ -320,11 +315,7 @@ export class V2ScheduleParser {
 				name: dayName,
 			});
 
-			if (
-				days.length > 2 &&
-				days[days.length - 2].name.startsWith("Суббота")
-			)
-				break;
+			if (days.length > 2 && dayName.startsWith("Суббота")) break;
 		}
 
 		return { daySkeletons: days, groupSkeletons: groups };
@@ -452,12 +443,15 @@ export class V2ScheduleParser {
 		const daysTimes: Array<Array<InternalTime>> = [];
 		let daysTimesFilled = false;
 
+		const saturdayEndRow = XLSX.utils.decode_range(workSheet["!ref"] || "")
+			.e.r;
+
 		for (const groupSkeleton of groupSkeletons) {
 			const group = new V2GroupDto();
 			group.name = groupSkeleton.name;
 			group.days = [];
 
-			for (let dayIdx = 0; dayIdx < daySkeletons.length - 1; ++dayIdx) {
+			for (let dayIdx = 0; dayIdx < daySkeletons.length; ++dayIdx) {
 				const daySkeleton = daySkeletons[dayIdx];
 				const day = new V2DayDto();
 				{
@@ -475,7 +469,9 @@ export class V2ScheduleParser {
 
 				const lessonTimeColumn = daySkeletons[0].column + 1;
 				const rowDistance =
-					daySkeletons[dayIdx + 1].row - daySkeleton.row;
+					(dayIdx !== daySkeletons.length - 1
+						? daySkeletons[dayIdx + 1].row
+						: saturdayEndRow) - daySkeleton.row;
 
 				const dayTimes: Array<InternalTime> = daysTimesFilled
 					? daysTimes[day.name]
@@ -573,11 +569,6 @@ export class V2ScheduleParser {
 
 		const teachers = V2ScheduleParser.convertGroupsToTeachers(groups);
 
-		const updatedTeachers = V2ScheduleParser.getUpdatedTeachers(
-			this.lastResult?.teachers,
-			teachers,
-		);
-
 		return (this.lastResult = {
 			downloadedAt: headData.requestedAt,
 			uploadedAt: headData.uploadedAt,
@@ -593,10 +584,7 @@ export class V2ScheduleParser {
 					? (this.lastResult?.updatedGroups ?? [])
 					: updatedGroups,
 
-			updatedTeachers:
-				updatedTeachers.length === 0
-					? (this.lastResult?.updatedTeachers ?? [])
-					: updatedTeachers,
+			updatedTeachers: [], // TODO: Вернуть эту фичу
 		});
 	}
 
@@ -759,33 +747,5 @@ export class V2ScheduleParser {
 		}
 
 		return updatedGroups;
-	}
-
-	private static getUpdatedTeachers(
-		cachedTeachers: Array<V2TeacherDto> | null,
-		currentTeachers: Array<V2TeacherDto>,
-	): Array<Array<number>> {
-		if (!cachedTeachers) return [];
-
-		const updatedTeachers = [];
-
-		for (const name in cachedTeachers) {
-			const cachedTeacher = cachedTeachers[name];
-			const currentTeacher = currentTeachers[name];
-
-			const affectedTeacherDays: Array<number> = [];
-
-			for (const dayIdx in currentTeacher.days) {
-				if (
-					objectHash.sha1(currentTeacher.days[dayIdx]) !==
-					objectHash.sha1(cachedTeacher.days[dayIdx])
-				)
-					affectedTeacherDays.push(+dayIdx);
-			}
-
-			updatedTeachers[name] = affectedTeacherDays;
-		}
-
-		return updatedTeachers;
 	}
 }
