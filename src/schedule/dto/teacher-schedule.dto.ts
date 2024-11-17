@@ -4,9 +4,7 @@ import { IsArray, IsObject, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
 import { TeacherDto } from "./teacher.dto";
 
-export class TeacherScheduleDto extends PickType(ScheduleDto, [
-	"updatedAt",
-]) {
+export class TeacherScheduleDto extends PickType(ScheduleDto, ["updatedAt"]) {
 	/**
 	 * Расписание преподавателя
 	 */

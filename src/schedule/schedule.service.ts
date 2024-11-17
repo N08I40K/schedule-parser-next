@@ -1,8 +1,4 @@
-import {
-	Inject,
-	Injectable,
-	NotFoundException,
-} from "@nestjs/common";
+import { Inject, Injectable, NotFoundException } from "@nestjs/common";
 import { BasicXlsDownloader } from "./internal/xls-downloader/basic-xls-downloader";
 import { Cache, CACHE_MANAGER } from "@nestjs/cache-manager";
 import { plainToInstance } from "class-transformer";
