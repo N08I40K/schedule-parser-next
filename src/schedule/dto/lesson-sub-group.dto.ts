@@ -1,6 +1,6 @@
 import { IsNumber, IsOptional, IsString } from "class-validator";
 
-export class V2LessonSubGroupDto {
+export class LessonSubGroupDto {
 	/**
 	 * Номер подгруппы
 	 * @example 1

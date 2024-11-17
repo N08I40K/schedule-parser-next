@@ -9,7 +9,6 @@ import {
 import { AuthService } from "./auth.service";
 import { ApiBody, ApiOperation, ApiResponse, ApiTags } from "@nestjs/swagger";
 import { ResultDto } from "../utility/validation/class-validator.interceptor";
-import { V1ScheduleService } from "../schedule/v1-schedule.service";
 import { UserToken } from "./auth.decorator";
 import { ResponseVersion } from "../version/response-version.decorator";
 import { SignInDto } from "./dto/sign-in.dto";
@@ -19,13 +18,14 @@ import { SignUpDto } from "./dto/sign-up.dto";
 import { UpdateTokenDto } from "./dto/update-token.dto";
 import { UpdateTokenResponseDto } from "./dto/update-token-response.dto";
 import { ChangePasswordDto } from "./dto/change-password.dto";
+import { ScheduleService } from "../schedule/schedule.service";
 
 @ApiTags("v1/auth")
 @Controller({ path: "auth", version: "1" })
 export class V1AuthController {
 	constructor(
 		private readonly authService: AuthService,
-		private readonly scheduleService: V1ScheduleService,
+		private readonly scheduleService: ScheduleService,
 	) {}
 
 	@ApiOperation({ summary: "Авторизация по логину и паролю" })

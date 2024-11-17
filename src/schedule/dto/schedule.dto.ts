@@ -1,8 +1,9 @@
 import { IsArray, IsDate, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
-import { V2GroupDto } from "./v2-group.dto";
+import { GroupDto } from "./group.dto";
+import { ToMap } from "create-map-transform-fn";
 
-export class V2ScheduleDto {
+export class ScheduleDto {
 	/**
 	 * Дата когда последний раз расписание было скачано с сервера политехникума
 	 * @example "2024-10-18T21:50:06.680Z"
@@ -13,10 +14,8 @@ export class V2ScheduleDto {
 	/**
 	 * Расписание групп
 	 */
-	@IsArray()
-	@ValidateNested({ each: true })
-	@Type(() => V2GroupDto)
-	groups: Array<V2GroupDto>;
+	@ToMap({ mapValueClass: GroupDto })
+	groups: Map<string, GroupDto>;
 
 	/**
 	 * Обновлённые дни с последнего изменения расписания

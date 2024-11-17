@@ -1,15 +1,16 @@
 import { PickType } from "@nestjs/swagger";
 import { IsArray, IsObject, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
-import { V2ScheduleDto } from "./v2-schedule.dto";
-import { V2GroupDto } from "./v2-group.dto";
+import { ScheduleDto } from "./schedule.dto";
+import { GroupDto } from "./group.dto";
 
-export class V2GroupScheduleDto extends PickType(V2ScheduleDto, ["updatedAt"]) {
+export class GroupScheduleDto extends PickType(ScheduleDto, ["updatedAt"]) {
 	/**
 	 * Расписание группы
 	 */
 	@IsObject()
-	group: V2GroupDto;
+	@Type(() => GroupDto)
+	group: GroupDto;
 
 	/**
 	 * Обновлённые дни с последнего изменения расписания

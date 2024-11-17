@@ -1,8 +1,8 @@
 import { IsArray, IsString, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
-import { V2DayDto } from "./v2-day.dto";
+import { DayDto } from "./day.dto";
 
-export class V2GroupDto {
+export class GroupDto {
 	/**
 	 * Название группы
 	 * @example "ИС-214/23"
@@ -15,6 +15,6 @@ export class V2GroupDto {
 	 */
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => V2DayDto)
-	days: Array<V2DayDto>;
+	@Type(() => DayDto)
+	days: Array<DayDto>;
 }

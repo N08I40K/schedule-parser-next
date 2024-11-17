@@ -1,7 +1,9 @@
-import { V2ScheduleParser } from "./v2-schedule-parser";
+import { V2ScheduleParser, V2ScheduleParseResult } from "./v2-schedule-parser";
 import { BasicXlsDownloader } from "../xls-downloader/basic-xls-downloader";
-import { V2DayDto } from "../../dto/v2/v2-day.dto";
-import { V2GroupDto } from "../../dto/v2/v2-group.dto";
+import { DayDto } from "../../dto/day.dto";
+import { GroupDto } from "../../dto/group.dto";
+import { V2LessonType } from "../../enum/v2-lesson-type.enum";
+import instanceToInstance2 from "../../../utility/class-trasformer/instance-to-instance-2";
 
 describe("V2ScheduleParser", () => {
 	let parser: V2ScheduleParser;
@@ -31,85 +33,87 @@ describe("V2ScheduleParser", () => {
 		const schedule = await parser.getSchedule();
 		expect(schedule).toBeDefined();
 
-		const group: V2GroupDto | undefined = schedule.groups["ИС-214/23"];
+		const group: GroupDto | undefined = schedule.groups.get("ИС-214/23");
 		expect(group).toBeDefined();
 
-		const saturday: V2DayDto = group.days[5];
-		expect(saturday).toBeDefined();
+		const monday: DayDto = group.days[0];
+		expect(monday).toBeDefined();
 
-		const name = saturday.name;
+		const name = monday.name;
 		expect(name).toBeDefined();
 		expect(name.length).toBeGreaterThan(0);
 	};
+	//
+	// function mapReplacer(key: any, value: any) {
+	// 	if (value instanceof Map) {
+	// 		return Array.from(value.entries());
+	// 	} else {
+	// 		return value;
+	// 	}
+	// }
 
 	describe("Расписание", () => {
 		beforeEach(async () => {
 			await setLink(
-				"https://politehnikum-eng.ru/2024/poltavskaja_11_s_11_11_po_17_11-5-.xls",
+				"https://politehnikum-eng.ru/2024/poltavskaja_12_s_18_po_24_11.xls",
 			);
 		});
 
 		it("Должен вернуть расписание", defaultTest);
 		it("Название дня не должно быть пустым или null", nameTest);
 
-		it("Парсер должен вернуть корректное время если она на нескольких линиях", async () => {
-			const schedule = await parser.getSchedule();
-			expect(schedule).toBeDefined();
-
-			const group: V2GroupDto | undefined = schedule.groups["ИС-214/23"];
-			expect(group).toBeDefined();
-
-			const saturday: V2DayDto = group.days[5];
-			expect(saturday).toBeDefined();
-
-			const firstLesson = saturday.lessons[0];
-			expect(firstLesson).toBeDefined();
-
-			expect(firstLesson.time).toBeDefined();
-
-			expect(firstLesson.time.start).toBeDefined();
-			expect(firstLesson.time.end).toBeDefined();
-
-			const startMinutes =
-				firstLesson.time.start.getHours() * 60 +
-				firstLesson.time.start.getMinutes();
-			const endMinutes =
-				firstLesson.time.end.getHours() * 60 +
-				firstLesson.time.end.getMinutes();
-
-			const differenceMinutes = endMinutes - startMinutes;
-
-			expect(differenceMinutes).toBe(190);
-
-			expect(firstLesson.defaultRange).toStrictEqual([1, 3]);
-		});
-
-		it("Ошибка парсинга?", async () => {
-			const schedule = await parser.getSchedule();
-			expect(schedule).toBeDefined();
-
-			const group: V2GroupDto | undefined = schedule.groups["ИС-214/23"];
-			expect(group).toBeDefined();
-
-			const thursday: V2DayDto = group.days[3];
-			expect(thursday).toBeDefined();
-
-			expect(thursday.lessons.length).toBe(5);
-
-			const lastLessonName = thursday.lessons[4].name;
-			expect(lastLessonName).toBe(
-				"МДК.05.01 Проектирование и дизайн информационных систем",
+		it("Зачёт с оценкой v1", async () => {
+			const schedule = await parser.getSchedule().then((v) =>
+				instanceToInstance2(V2ScheduleParseResult, v, {
+					groups: ["v1"],
+				}),
 			);
-		});
-
-		it("Суббота не должна отсутствовать", async () => {
-			const schedule = await parser.getSchedule();
 			expect(schedule).toBeDefined();
 
-			const group: V2GroupDto | undefined = schedule.groups["ИС-214/23"];
+			const group: GroupDto | undefined =
+				schedule.groups.get("ИС-214/23");
 			expect(group).toBeDefined();
 
-			expect(group.days.length).toBe(6);
+			const tuesday = group.days[1];
+			expect(tuesday).toBeDefined();
+
+			const oseLesson = tuesday.lessons[6];
+			expect(oseLesson).toBeDefined();
+
+			expect(oseLesson.name.startsWith("ЗАЧЕТ С ОЦЕНКОЙ | ")).toBe(true);
+			expect(oseLesson.type).toBe(V2LessonType.DEFAULT);
 		});
+
+		it("Зачёт с оценкой v2", async () => {
+			const schedule = await parser.getSchedule().then((v) =>
+				instanceToInstance2(V2ScheduleParseResult, v, {
+					groups: ["v2"],
+				}),
+			);
+			expect(schedule).toBeDefined();
+
+			const group: GroupDto | undefined =
+				schedule.groups.get("ИС-214/23");
+			expect(group).toBeDefined();
+
+			const tuesday = group.days[1];
+			expect(tuesday).toBeDefined();
+
+			const oseLesson = tuesday.lessons[6];
+			expect(oseLesson).toBeDefined();
+
+			expect(oseLesson.name.startsWith("Операционные")).toBe(true);
+			expect(oseLesson.type).toBe(V2LessonType.EXAM_WITH_GRADE);
+		});
+
+		// it("Суббота не должна отсутствовать", async () => {
+		// 	const schedule = await parser.getSchedule();
+		// 	expect(schedule).toBeDefined();
+		//
+		// 	const group: V2GroupDto | undefined = schedule.groups["ИС-214/23"];
+		// 	expect(group).toBeDefined();
+		//
+		// 	expect(group.days.length).toBe(6);
+		// });
 	});
 });

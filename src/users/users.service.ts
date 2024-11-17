@@ -7,18 +7,18 @@ import {
 } from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service";
 import { Prisma } from "@prisma/client";
-import { V1ScheduleService } from "../schedule/v1-schedule.service";
 import { User } from "./entity/user.entity";
 import { ChangeUsernameDto } from "./dto/change-username.dto";
 import { ChangeGroupDto } from "./dto/change-group.dto";
 import { plainToInstance } from "class-transformer";
+import { ScheduleService } from "../schedule/schedule.service";
 
 @Injectable()
 export class UsersService {
 	constructor(
 		private readonly prismaService: PrismaService,
-		@Inject(forwardRef(() => V1ScheduleService))
-		private readonly scheduleService: V1ScheduleService,
+		@Inject(forwardRef(() => ScheduleService))
+		private readonly scheduleService: ScheduleService,
 	) {}
 
 	async findUnique(where: Prisma.UserWhereUniqueInput): Promise<User | null> {

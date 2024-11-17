@@ -1,8 +1,8 @@
 import { IsArray, IsString, ValidateNested } from "class-validator";
 import { Type } from "class-transformer";
-import { V2TeacherDayDto } from "./v2-teacher-day.dto";
+import { TeacherDayDto } from "./teacher-day.dto";
 
-export class V2TeacherDto {
+export class TeacherDto {
 	/**
 	 * ФИО преподавателя
 	 * @example "Хомченко Н.Е."
@@ -15,6 +15,6 @@ export class V2TeacherDto {
 	 */
 	@IsArray()
 	@ValidateNested({ each: true })
-	@Type(() => V2TeacherDayDto)
-	days: Array<V2TeacherDayDto>;
+	@Type(() => TeacherDayDto)
+	days: Array<TeacherDayDto>;
 }

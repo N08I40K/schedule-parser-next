@@ -34,6 +34,7 @@
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.1",
     "cookie": ">=0.7.0",
+    "create-map-transform-fn": "gist:f65ddd8f17f8c388659aab76890f194b",
     "dotenv": "^16.4.5",
     "firebase-admin": "^12.6.0",
     "jsdom": "^25.0.0",

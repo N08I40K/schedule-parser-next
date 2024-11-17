@@ -13,7 +13,6 @@ import { AuthGuard } from "../auth/auth.guard";
 import { ResultDto } from "../utility/validation/class-validator.interceptor";
 import {
 	ApiBearerAuth,
-	ApiBody,
 	ApiOperation,
 	ApiResponse,
 	ApiTags,
@@ -21,26 +20,25 @@ import {
 import { AuthRoles, AuthUnauthorized } from "../auth/auth-role.decorator";
 import { UserToken } from "../auth/auth.decorator";
 import { UserPipe } from "../auth/auth.pipe";
-import { V2ScheduleService } from "./v2-schedule.service";
-import { V2ScheduleDto } from "./dto/v2/v2-schedule.dto";
+import { ScheduleService } from "./schedule.service";
+import { ScheduleDto } from "./dto/schedule.dto";
 import { CacheInterceptor, CacheKey } from "@nestjs/cache-manager";
 import { UserRole } from "../users/user-role.enum";
 import { User } from "../users/entity/user.entity";
-import { V1CacheStatusDto } from "./dto/v1/v1-cache-status.dto";
-import { V2CacheStatusDto } from "./dto/v2/v2-cache-status.dto";
-import { V2UpdateDownloadUrlDto } from "./dto/v2/v2-update-download-url.dto";
-import { V2GroupScheduleByNameDto } from "./dto/v2/v2-group-schedule-by-name.dto";
-import { V2GroupScheduleDto } from "./dto/v2/v2-group-schedule.dto";
-import { V2ScheduleGroupNamesDto } from "./dto/v2/v2-schedule-group-names.dto";
-import { V2TeacherScheduleDto } from "./dto/v2/v2-teacher-schedule.dto";
-import { V2ScheduleTeacherNamesDto } from "./dto/v2/v2-schedule-teacher-names.dto";
+import { CacheStatusDto } from "./dto/cache-status.dto";
+import { UpdateDownloadUrlDto } from "./dto/update-download-url.dto";
+import { GroupScheduleDto } from "./dto/group-schedule.dto";
+import { ScheduleGroupNamesDto } from "./dto/schedule-group-names.dto";
+import { TeacherScheduleDto } from "./dto/teacher-schedule.dto";
+import { ScheduleTeacherNamesDto } from "./dto/schedule-teacher-names.dto";
+import instanceToInstance2 from "../utility/class-trasformer/instance-to-instance-2";
 
 @ApiTags("v2/schedule")
 @ApiBearerAuth()
 @Controller({ path: "schedule", version: "2" })
 @UseGuards(AuthGuard)
 export class V2ScheduleController {
-	constructor(private readonly scheduleService: V2ScheduleService) {}
+	constructor(private readonly scheduleService: ScheduleService) {}
 
 	@ApiOperation({
 		summary: "Получение расписания",
@@ -49,88 +47,97 @@ export class V2ScheduleController {
 	@ApiResponse({
 		status: HttpStatus.OK,
 		description: "Расписание получено успешно",
-		type: V2ScheduleDto,
+		type: ScheduleDto,
 	})
-	@ResultDto(V2ScheduleDto)
+	@ResultDto(ScheduleDto)
 	@AuthRoles([UserRole.ADMIN])
 	@CacheKey("v2-schedule")
 	@UseInterceptors(CacheInterceptor)
 	@HttpCode(HttpStatus.OK)
 	@Get()
-	async getSchedule(): Promise<V2ScheduleDto> {
-		return await this.scheduleService.getSchedule();
+	async getSchedule(): Promise<ScheduleDto> {
+		return await this.scheduleService.getSchedule().then((result) =>
+			instanceToInstance2(ScheduleDto, result, {
+				groups: ["v1"],
+			}),
+		);
 	}
 
 	@ApiOperation({ summary: "Получение расписания группы" })
-	@ApiBody({ type: V2GroupScheduleByNameDto })
 	@ApiResponse({
 		status: HttpStatus.OK,
 		description: "Расписание получено успешно",
-		type: V2GroupScheduleDto,
+		type: GroupScheduleDto,
 	})
 	@ApiResponse({
 		status: HttpStatus.NOT_FOUND,
 		description: "Требуемая группа не найдена",
 	})
-	@ResultDto(V2GroupScheduleDto)
+	@ResultDto(GroupScheduleDto)
 	@HttpCode(HttpStatus.OK)
 	@Get("group")
 	async getGroupSchedule(
-		@Body() reqDto: V2GroupScheduleByNameDto,
 		@UserToken(UserPipe) user: User,
-	): Promise<V2GroupScheduleDto> {
-		return await this.scheduleService.getGroup(reqDto.name ?? user.group);
+	): Promise<GroupScheduleDto> {
+		return await this.scheduleService.getGroup(user.group).then((result) =>
+			instanceToInstance2(GroupScheduleDto, result, {
+				groups: ["v1"],
+			}),
+		);
 	}
 
 	@ApiOperation({ summary: "Получение списка названий групп" })
 	@ApiResponse({
 		status: HttpStatus.OK,
 		description: "Список получен успешно",
-		type: V2ScheduleGroupNamesDto,
+		type: ScheduleGroupNamesDto,
 	})
-	@ResultDto(V2ScheduleGroupNamesDto)
+	@ResultDto(ScheduleGroupNamesDto)
 	@CacheKey("v2-schedule-group-names")
 	@UseInterceptors(CacheInterceptor)
 	@AuthUnauthorized()
 	@HttpCode(HttpStatus.OK)
 	@Get("group-names")
-	async getGroupNames(): Promise<V2ScheduleGroupNamesDto> {
+	async getGroupNames(): Promise<ScheduleGroupNamesDto> {
 		return await this.scheduleService.getGroupNames();
 	}
 
 	@ApiOperation({ summary: "Получение расписания преподавателя" })
-	@ApiBody({ type: V2GroupScheduleByNameDto })
 	@ApiResponse({
 		status: HttpStatus.OK,
 		description: "Расписание получено успешно",
-		type: V2TeacherScheduleDto,
+		type: TeacherScheduleDto,
 	})
 	@ApiResponse({
 		status: HttpStatus.NOT_FOUND,
 		description: "Требуемый преподаватель не найден",
 	})
-	@ResultDto(V2TeacherScheduleDto)
+	@ResultDto(TeacherScheduleDto)
 	@HttpCode(HttpStatus.OK)
 	@Get("teacher/:name")
 	async getTeacherSchedule(
 		@Param("name") name: string,
-	): Promise<V2TeacherScheduleDto> {
-		return await this.scheduleService.getTeacher(name);
+	): Promise<TeacherScheduleDto> {
+		return await this.scheduleService.getTeacher(name).then((result) =>
+			instanceToInstance2(TeacherScheduleDto, result, {
+				groups: ["v1"],
+			}),
+		);
 	}
 
 	@ApiOperation({ summary: "Получение списка ФИО преподавателей" })
 	@ApiResponse({
 		status: HttpStatus.OK,
 		description: "Список получен успешно",
-		type: V2ScheduleTeacherNamesDto,
+		type: ScheduleTeacherNamesDto,
 	})
-	@ResultDto(V2ScheduleTeacherNamesDto)
+	@ResultDto(ScheduleTeacherNamesDto)
 	@CacheKey("v2-schedule-teacher-names")
 	@UseInterceptors(CacheInterceptor)
 	@AuthUnauthorized()
 	@HttpCode(HttpStatus.OK)
 	@Get("teacher-names")
-	async getTeacherNames(): Promise<V2ScheduleTeacherNamesDto> {
+	async getTeacherNames(): Promise<ScheduleTeacherNamesDto> {
 		return await this.scheduleService.getTeacherNames();
 	}
 
@@ -138,18 +145,18 @@ export class V2ScheduleController {
 	@ApiResponse({
 		status: HttpStatus.OK,
 		description: "Данные обновлены успешно",
-		type: V2CacheStatusDto,
+		type: CacheStatusDto,
 	})
 	@ApiResponse({
 		status: HttpStatus.NOT_ACCEPTABLE,
 		description: "Передан некорректный код страницы",
 	})
-	@ResultDto(V2CacheStatusDto)
+	@ResultDto(CacheStatusDto)
 	@HttpCode(HttpStatus.OK)
 	@Patch("update-download-url")
 	async updateDownloadUrl(
-		@Body() reqDto: V2UpdateDownloadUrlDto,
-	): Promise<V1CacheStatusDto> {
+		@Body() reqDto: UpdateDownloadUrlDto,
+	): Promise<CacheStatusDto> {
 		return await this.scheduleService.updateDownloadUrl(reqDto.url);
 	}
 
@@ -160,12 +167,12 @@ export class V2ScheduleController {
 	@ApiResponse({
 		status: HttpStatus.OK,
 		description: "Получение данных прошло успешно",
-		type: V2CacheStatusDto,
+		type: CacheStatusDto,
 	})
-	@ResultDto(V2CacheStatusDto)
+	@ResultDto(CacheStatusDto)
 	@HttpCode(HttpStatus.OK)
 	@Get("cache-status")
-	getCacheStatus(): V2CacheStatusDto {
+	getCacheStatus(): CacheStatusDto {
 		return this.scheduleService.getCacheStatus();
 	}
 }

@@ -3,19 +3,27 @@ import { XlsDownloaderInterface } from "../xls-downloader/xls-downloader.interfa
 import * as XLSX from "xlsx";
 import { Range, WorkSheet } from "xlsx";
 import { toNormalString, trimAll } from "../../../utility/string.util";
-import { plainToClass, plainToInstance } from "class-transformer";
+import { plainToClass, plainToInstance, Type } from "class-transformer";
 import * as objectHash from "object-hash";
-import { V2LessonTimeDto } from "../../dto/v2/v2-lesson-time.dto";
+import { LessonTimeDto } from "../../dto/lesson-time.dto";
 import { V2LessonType } from "../../enum/v2-lesson-type.enum";
-import { V2LessonSubGroupDto } from "../../dto/v2/v2-lesson-sub-group.dto";
-import { V2LessonDto } from "../../dto/v2/v2-lesson.dto";
-import { V2DayDto } from "../../dto/v2/v2-day.dto";
-import { V2GroupDto } from "../../dto/v2/v2-group.dto";
+import { LessonSubGroupDto } from "../../dto/lesson-sub-group.dto";
+import { LessonDto } from "../../dto/lesson.dto";
+import { DayDto } from "../../dto/day.dto";
+import { GroupDto } from "../../dto/group.dto";
 import * as assert from "node:assert";
 import { ScheduleReplacerService } from "../../schedule-replacer.service";
-import { V2TeacherDto } from "../../dto/v2/v2-teacher.dto";
-import { V2TeacherDayDto } from "../../dto/v2/v2-teacher-day.dto";
-import { V2TeacherLessonDto } from "../../dto/v2/v2-teacher-lesson.dto";
+import { TeacherDto } from "../../dto/teacher.dto";
+import { TeacherDayDto } from "../../dto/teacher-day.dto";
+import { TeacherLessonDto } from "../../dto/teacher-lesson.dto";
+import {
+	IsArray,
+	IsDate,
+	IsOptional,
+	IsString,
+	ValidateNested,
+} from "class-validator";
+import { ToMap } from "create-map-transform-fn";
 
 type InternalId = {
 	/**
@@ -38,7 +46,7 @@ type InternalTime = {
 	/**
 	 * Временной отрезок
 	 */
-	timeRange: V2LessonTimeDto;
+	timeRange: LessonTimeDto;
 
 	/**
 	 * Тип пары на этой строке
@@ -60,45 +68,61 @@ export class V2ScheduleParseResult {
 	/**
 	 * ETag расписания
 	 */
+	@IsString()
 	etag: string;
 
 	/**
 	 * Идентификатор заменённого расписания (ObjectId)
 	 */
+	@IsString()
+	@IsOptional()
 	replacerId?: string;
 
 	/**
 	 * Дата загрузки расписания на сайт политехникума
 	 */
+	@IsDate()
 	uploadedAt: Date;
 
 	/**
 	 * Дата загрузки расписания с сайта политехникума
 	 */
+	@IsDate()
 	downloadedAt: Date;
 
 	/**
 	 * Расписание групп в виде списка.
 	 * Ключ - название группы.
 	 */
-	groups: Array<V2GroupDto>;
+	@ToMap({ mapValueClass: GroupDto })
+	groups: Map<string, GroupDto>;
 
 	/**
 	 * Расписание преподавателей в виде списка.
 	 * Ключ - ФИО преподавателя
 	 */
-	teachers: Array<V2TeacherDto>;
+	@ToMap({ mapValueClass: TeacherDto })
+	teachers: Map<string, TeacherDto>;
 
 	/**
 	 * Список групп у которых было обновлено расписание с момента последнего обновления файла.
 	 * Ключ - название группы.
 	 */
+	@IsArray()
+	@ValidateNested({ each: true })
+	@Type(() => Array<number>)
+	@ValidateNested({ each: true })
+	@Type(() => Number)
 	updatedGroups: Array<Array<number>>;
 
 	/**
 	 * Список преподавателей у которых было обновлено расписание с момента последнего обновления файла.
 	 * Ключ - ФИО преподавателя.
 	 */
+	@ValidateNested({ each: true })
+	@Type(() => Array<number>)
+	@ValidateNested({ each: true })
+	@Type(() => Number)
 	updatedTeachers: Array<Array<number>>;
 }
 
@@ -163,14 +187,14 @@ export class V2ScheduleParser {
 	 * @param lessonName - текст в записи
 	 * @returns {{
 	 * 		name: string;
-	 * 		subGroups: Array<V2LessonSubGroupDto>;
+	 * 		subGroups: Array<LessonSubGroupDto>;
 	 * 	}} - название пары и список подгрупп
 	 * @private
 	 * @static
 	 */
 	private static parseNameAndSubGroups(lessonName: string): {
 		name: string;
-		subGroups: Array<V2LessonSubGroupDto>;
+		subGroups: Array<LessonSubGroupDto>;
 	} {
 		// хд
 
@@ -201,7 +225,7 @@ export class V2ScheduleParser {
 			throw new Error("Парадокс");
 		}
 
-		const subGroups: Array<V2LessonSubGroupDto> = [];
+		const subGroups: Array<LessonSubGroupDto> = [];
 
 		for (const teacherAndSubGroup of all) {
 			const teacherRegex = /[А-ЯЁ][а-яё]+\s[А-ЯЁ]\.\s?[А-ЯЁ]\./g;
@@ -224,7 +248,7 @@ export class V2ScheduleParser {
 				: 1;
 
 			subGroups.push(
-				plainToClass(V2LessonSubGroupDto, {
+				plainToClass(LessonSubGroupDto, {
 					teacher: teacherFIO,
 					number: subGroup,
 					cabinet: "",
@@ -330,34 +354,36 @@ export class V2ScheduleParser {
 	}
 
 	private static convertGroupsToTeachers(
-		groups: Array<V2GroupDto>,
-	): Array<V2TeacherDto> {
-		const result: Array<V2TeacherDto> = [];
+		groups: Map<string, GroupDto>,
+	): Map<string, TeacherDto> {
+		const result = new Map<string, TeacherDto>();
 
-		for (const groupName in groups) {
-			const group = groups[groupName];
+		for (const groupName of groups.keys()) {
+			const group = groups.get(groupName);
 
 			for (const day of group.days) {
 				for (const lesson of day.lessons) {
 					if (lesson.type !== V2LessonType.DEFAULT) continue;
 
 					for (const subGroup of lesson.subGroups) {
-						let teacherDto: V2TeacherDto = result[subGroup.teacher];
+						let teacherDto: TeacherDto = result.get(
+							subGroup.teacher,
+						);
 
 						if (!teacherDto) {
-							teacherDto = result[subGroup.teacher] =
-								new V2TeacherDto();
+							teacherDto = new TeacherDto();
+							result.set(subGroup.teacher, teacherDto);
 
 							teacherDto.name = subGroup.teacher;
 							teacherDto.days = [];
 						}
 
-						let teacherDay: V2TeacherDayDto =
+						let teacherDay: TeacherDayDto =
 							teacherDto.days[day.name];
 
 						if (!teacherDay) {
 							teacherDay = teacherDto.days[day.name] =
-								new V2TeacherDayDto();
+								new TeacherDayDto();
 
 							// TODO: Что это блять такое?
 							// noinspection JSConstantReassignment
@@ -368,7 +394,7 @@ export class V2ScheduleParser {
 
 						const teacherLesson = structuredClone(
 							lesson,
-						) as V2TeacherLessonDto;
+						) as TeacherLessonDto;
 						teacherLesson.group = groupName;
 
 						teacherDay.lessons.push(teacherLesson);
@@ -377,8 +403,8 @@ export class V2ScheduleParser {
 			}
 		}
 
-		for (const teacherName in result) {
-			const teacher = result[teacherName];
+		for (const teacherName of result.keys()) {
+			const teacher = result.get(teacherName);
 
 			const days = teacher.days;
 
@@ -438,7 +464,7 @@ export class V2ScheduleParser {
 		const { groupSkeletons, daySkeletons } =
 			V2ScheduleParser.parseSkeleton(workSheet);
 
-		const groups: Array<V2GroupDto> = [];
+		const groups = new Map<string, GroupDto>();
 
 		const daysTimes: Array<Array<InternalTime>> = [];
 		let daysTimesFilled = false;
@@ -447,13 +473,13 @@ export class V2ScheduleParser {
 			.e.r;
 
 		for (const groupSkeleton of groupSkeletons) {
-			const group = new V2GroupDto();
+			const group = new GroupDto();
 			group.name = groupSkeleton.name;
 			group.days = [];
 
 			for (let dayIdx = 0; dayIdx < daySkeletons.length; ++dayIdx) {
 				const daySkeleton = daySkeletons[dayIdx];
-				const day = new V2DayDto();
+				const day = new DayDto();
 				{
 					const daySpaceIndex = daySkeleton.name.indexOf(" ");
 					day.name = daySkeleton.name.substring(0, daySpaceIndex);
@@ -502,7 +528,7 @@ export class V2ScheduleParser {
 								: null;
 
 						// time
-						const timeRange = new V2LessonTimeDto();
+						const timeRange = new LessonTimeDto();
 
 						timeRange.start = new Date(day.date);
 						timeRange.end = new Date(day.date);
@@ -543,7 +569,7 @@ export class V2ScheduleParser {
 				}
 
 				for (const time of dayTimes) {
-					const lessons = V2ScheduleParser.parseLesson(
+					const lessonsOrStreet = V2ScheduleParser.parseLesson(
 						workSheet,
 						day,
 						dayTimes,
@@ -551,7 +577,13 @@ export class V2ScheduleParser {
 						groupSkeleton.column,
 					);
 
-					for (const lesson of lessons) day.lessons.push(lesson);
+					if (typeof lessonsOrStreet === "string") {
+						day.street = lessonsOrStreet as string;
+						continue;
+					}
+
+					for (const lesson of lessonsOrStreet as Array<LessonDto>)
+						day.lessons.push(lesson);
 				}
 
 				group.days.push(day);
@@ -559,7 +591,7 @@ export class V2ScheduleParser {
 
 			if (!daysTimesFilled) daysTimesFilled = true;
 
-			groups[group.name] = group;
+			groups.set(group.name, group);
 		}
 
 		const updatedGroups = V2ScheduleParser.getUpdatedGroups(
@@ -588,34 +620,54 @@ export class V2ScheduleParser {
 		});
 	}
 
+	private static readonly consultationRegExp = /\(?[кК]онсультация\)?/;
+	private static readonly otherStreetRegExp = /^[А-Я][а-я]+,\s?[0-9]+$/;
+
 	private static parseLesson(
 		workSheet: XLSX.Sheet,
-		day: V2DayDto,
+		day: DayDto,
 		dayTimes: Array<InternalTime>,
 		time: InternalTime,
 		column: number,
-	): Array<V2LessonDto> {
+	): Array<LessonDto> | string {
 		const row = time.xlsxRange.s.r;
 
 		// name
-		const rawName = trimAll(
+		let rawName = trimAll(
 			V2ScheduleParser.getCellData(workSheet, row, column)?.replaceAll(
 				/[\n\r]/g,
-				"",
+				" ",
 			) ?? "",
 		);
 
 		if (rawName.length === 0) return [];
 
-		const lesson = new V2LessonDto();
+		const lesson = new LessonDto();
 
-		lesson.type = time.lessonType;
+		if (this.otherStreetRegExp.test(rawName)) return rawName;
+		else if (rawName.includes("ЗАЧЕТ С ОЦЕНКОЙ")) {
+			lesson.type = V2LessonType.EXAM_WITH_GRADE;
+			rawName = trimAll(rawName.replace("ЗАЧЕТ С ОЦЕНКОЙ", ""));
+		} else if (rawName.includes("ЗАЧЕТ")) {
+			lesson.type = V2LessonType.EXAM;
+			rawName = trimAll(rawName.replace("ЗАЧЕТ", ""));
+		} else if (rawName.includes("(консультация)")) {
+			lesson.type = V2LessonType.CONSULTATION;
+			rawName = trimAll(rawName.replace("(консультация)", ""));
+		} else if (this.consultationRegExp.test(rawName)) {
+			lesson.type = V2LessonType.CONSULTATION;
+			rawName = trimAll(rawName.replace(this.consultationRegExp, ""));
+		} else if (rawName.includes("САМОСТОЯТЕЛЬНАЯ РАБОТА")) {
+			lesson.type = V2LessonType.INDEPENDENT_WORK;
+			rawName = trimAll(rawName.replace("САМОСТОЯТЕЛЬНАЯ РАБОТА", ""));
+		} else lesson.type = time.lessonType;
+
 		lesson.defaultRange =
 			time.defaultIndex !== null
 				? [time.defaultIndex, time.defaultIndex]
 				: null;
 
-		lesson.time = new V2LessonTimeDto();
+		lesson.time = new LessonTimeDto();
 		lesson.time.start = time.timeRange.start;
 
 		// check if multi-lesson
@@ -657,11 +709,11 @@ export class V2ScheduleParser {
 					for (const index in cabinets) {
 						if (lesson.subGroups[index] === undefined) {
 							lesson.subGroups.push(
-								plainToInstance(V2LessonSubGroupDto, {
+								plainToInstance(LessonSubGroupDto, {
 									number: +index + 1,
 									teacher: "Ошибка в расписании",
 									cabinet: cabinets[index],
-								} as V2LessonSubGroupDto),
+								} as LessonSubGroupDto),
 							);
 
 							continue;
@@ -681,16 +733,16 @@ export class V2ScheduleParser {
 		if (!prevLesson) return [lesson];
 
 		return [
-			plainToInstance(V2LessonDto, {
+			plainToInstance(LessonDto, {
 				type: V2LessonType.BREAK,
 				defaultRange: null,
 				name: null,
-				time: plainToInstance(V2LessonTimeDto, {
+				time: plainToInstance(LessonTimeDto, {
 					start: prevLesson.time.end,
 					end: lesson.time.start,
-				} as V2LessonTimeDto),
+				} as LessonTimeDto),
 				subGroups: [],
-			} as V2LessonDto),
+			} as LessonDto),
 			lesson,
 		];
 	}
@@ -722,16 +774,16 @@ export class V2ScheduleParser {
 	}
 
 	private static getUpdatedGroups(
-		cachedGroups: Array<V2GroupDto> | null,
-		currentGroups: Array<V2GroupDto>,
+		cachedGroups: Map<string, GroupDto> | null,
+		currentGroups: Map<string, GroupDto>,
 	): Array<Array<number>> {
 		if (!cachedGroups) return [];
 
 		const updatedGroups = [];
 
-		for (const name in cachedGroups) {
-			const cachedGroup = cachedGroups[name];
-			const currentGroup = currentGroups[name];
+		for (const name of cachedGroups.keys()) {
+			const cachedGroup = cachedGroups.get(name);
+			const currentGroup = currentGroups.get(name);
 
 			const affectedGroupDays: Array<number> = [];
 

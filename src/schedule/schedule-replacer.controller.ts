@@ -12,7 +12,6 @@ import {
 import { AuthGuard } from "src/auth/auth.guard";
 import { AuthRoles } from "../auth/auth-role.decorator";
 import { ScheduleReplacerService } from "./schedule-replacer.service";
-import { V1ScheduleService } from "./v1-schedule.service";
 import { FileInterceptor } from "@nestjs/platform-express";
 import {
 	ApiBearerAuth,
@@ -25,6 +24,7 @@ import { UserRole } from "../users/user-role.enum";
 import { ScheduleReplacerDto } from "./dto/schedule-replacer.dto";
 import { ClearScheduleReplacerDto } from "./dto/clear-schedule-replacer.dto";
 import { plainToInstance } from "class-transformer";
+import { ScheduleService } from "./schedule.service";
 
 @ApiTags("v1/schedule-replacer")
 @ApiBearerAuth()
@@ -32,7 +32,7 @@ import { plainToInstance } from "class-transformer";
 @UseGuards(AuthGuard)
 export class ScheduleReplacerController {
 	constructor(
-		private readonly scheduleService: V1ScheduleService,
+		private readonly scheduleService: ScheduleService,
 		private readonly scheduleReplaceService: ScheduleReplacerService,
 	) {}
 
