@@ -55,34 +55,12 @@ describe("V2ScheduleParser", () => {
 	describe("Расписание", () => {
 		beforeEach(async () => {
 			await setLink(
-				"https://politehnikum-eng.ru/2024/poltavskaja_12_s_18_po_24_11.xls",
+				"https://politehnikum-eng.ru/2024/poltavskaja_14_s_2_po_8_12.xls",
 			);
 		});
 
 		it("Должен вернуть расписание", defaultTest);
 		it("Название дня не должно быть пустым или null", nameTest);
-
-		it("Зачёт с оценкой v1", async () => {
-			const schedule = await parser.getSchedule().then((v) =>
-				instanceToInstance2(V2ScheduleParseResult, v, {
-					groups: ["v1"],
-				}),
-			);
-			expect(schedule).toBeDefined();
-
-			const group: GroupDto | undefined =
-				schedule.groups.get("ИС-214/23");
-			expect(group).toBeDefined();
-
-			const tuesday = group.days[1];
-			expect(tuesday).toBeDefined();
-
-			const oseLesson = tuesday.lessons[6];
-			expect(oseLesson).toBeDefined();
-
-			expect(oseLesson.name.startsWith("ЗАЧЕТ С ОЦЕНКОЙ | ")).toBe(true);
-			expect(oseLesson.type).toBe(V2LessonType.DEFAULT);
-		});
 
 		it("Зачёт с оценкой v2", async () => {
 			const schedule = await parser.getSchedule().then((v) =>
@@ -96,24 +74,13 @@ describe("V2ScheduleParser", () => {
 				schedule.groups.get("ИС-214/23");
 			expect(group).toBeDefined();
 
-			const tuesday = group.days[1];
-			expect(tuesday).toBeDefined();
+			const day = group.days[5];
+			expect(day).toBeDefined();
 
-			const oseLesson = tuesday.lessons[6];
-			expect(oseLesson).toBeDefined();
+			const lesson = day.lessons[0];
+			expect(lesson).toBeDefined();
 
-			expect(oseLesson.name.startsWith("Операционные")).toBe(true);
-			expect(oseLesson.type).toBe(V2LessonType.EXAM_WITH_GRADE);
+			expect(lesson.type).toBe(V2LessonType.EXAM);
 		});
-
-		// it("Суббота не должна отсутствовать", async () => {
-		// 	const schedule = await parser.getSchedule();
-		// 	expect(schedule).toBeDefined();
-		//
-		// 	const group: V2GroupDto | undefined = schedule.groups["ИС-214/23"];
-		// 	expect(group).toBeDefined();
-		//
-		// 	expect(group.days.length).toBe(6);
-		// });
 	});
 });

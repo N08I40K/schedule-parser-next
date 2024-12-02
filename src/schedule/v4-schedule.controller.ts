@@ -27,11 +27,11 @@ import { GroupScheduleDto } from "./dto/group-schedule.dto";
 import { TeacherScheduleDto } from "./dto/teacher-schedule.dto";
 import instanceToInstance2 from "../utility/class-trasformer/instance-to-instance-2";
 
-@ApiTags("v3/schedule")
+@ApiTags("v4/schedule")
 @ApiBearerAuth()
-@Controller({ path: "schedule", version: "3" })
+@Controller({ path: "schedule", version: "4" })
 @UseGuards(AuthGuard)
-export class V3ScheduleController {
+export class V4ScheduleController {
 	constructor(private readonly scheduleService: ScheduleService) {}
 
 	@ApiOperation({
@@ -45,14 +45,14 @@ export class V3ScheduleController {
 	})
 	@ResultDto(ScheduleDto)
 	@AuthRoles([UserRole.ADMIN])
-	@CacheKey("v3-schedule")
+	@CacheKey("v4-schedule")
 	@UseInterceptors(CacheInterceptor)
 	@HttpCode(HttpStatus.OK)
 	@Get()
 	async getSchedule(): Promise<ScheduleDto> {
 		return await this.scheduleService.getSchedule().then((result) =>
 			instanceToInstance2(ScheduleDto, result, {
-				groups: ["v2"],
+				groups: ["v3"],
 			}),
 		);
 	}
@@ -75,7 +75,7 @@ export class V3ScheduleController {
 	): Promise<GroupScheduleDto> {
 		return await this.scheduleService.getGroup(user.group).then((result) =>
 			instanceToInstance2(GroupScheduleDto, result, {
-				groups: ["v2"],
+				groups: ["v3"],
 			}),
 		);
 	}
@@ -98,7 +98,7 @@ export class V3ScheduleController {
 	): Promise<TeacherScheduleDto> {
 		return await this.scheduleService.getTeacher(name).then((result) =>
 			instanceToInstance2(TeacherScheduleDto, result, {
-				groups: ["v2"],
+				groups: ["v3"],
 			}),
 		);
 	}

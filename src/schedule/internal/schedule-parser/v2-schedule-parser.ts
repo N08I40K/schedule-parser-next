@@ -229,7 +229,7 @@ export class V2ScheduleParser {
 
 		for (const teacherAndSubGroup of all) {
 			const teacherRegex = /[А-ЯЁ][а-яё]+\s[А-ЯЁ]\.\s?[А-ЯЁ]\./g;
-			const subGroupRegex = /\([0-9]\s?подгруппа\)/g;
+			const subGroupRegex = /\([0-9]подгруппа\)/g;
 
 			const teacherMatch = teacherRegex.exec(teacherAndSubGroup);
 			if (teacherMatch === null) throw new Error("Парадокс");
@@ -242,7 +242,9 @@ export class V2ScheduleParser {
 
 			teacherFIO = `${teacherFIO.substring(0, teacherSpaceIndex)}${teacherIO}`;
 
-			const subGroupMatch = subGroupRegex.exec(teacherAndSubGroup);
+			const subGroupMatch = subGroupRegex.exec(
+				teacherAndSubGroup.replaceAll(" ", ""),
+			);
 			const subGroup = subGroupMatch
 				? Number.parseInt(subGroupMatch[0][1])
 				: 1;
@@ -277,7 +279,10 @@ export class V2ScheduleParser {
 		}
 
 		return {
-			name: lessonName.substring(0, allMatch.index).trim(),
+			name: lessonName
+				.substring(0, allMatch.index)
+				.replaceAll(".", "")
+				.trim(),
 			subGroups: subGroups,
 		};
 	}
@@ -645,7 +650,10 @@ export class V2ScheduleParser {
 		const lesson = new LessonDto();
 
 		if (this.otherStreetRegExp.test(rawName)) return rawName;
-		else if (rawName.includes("ЗАЧЕТ С ОЦЕНКОЙ")) {
+		else if (rawName.includes("ЭКЗАМЕН")) {
+			lesson.type = V2LessonType.EXAM_DEFAULT;
+			rawName = trimAll(rawName.replace("ЭКЗАМЕН", ""));
+		} else if (rawName.includes("ЗАЧЕТ С ОЦЕНКОЙ")) {
 			lesson.type = V2LessonType.EXAM_WITH_GRADE;
 			rawName = trimAll(rawName.replace("ЗАЧЕТ С ОЦЕНКОЙ", ""));
 		} else if (rawName.includes("ЗАЧЕТ")) {

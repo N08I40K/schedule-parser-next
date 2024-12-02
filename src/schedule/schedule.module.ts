@@ -7,6 +7,7 @@ import { ScheduleReplacerController } from "./schedule-replacer.controller";
 import { ScheduleService } from "./schedule.service";
 import { V2ScheduleController } from "./v2-schedule.controller";
 import { V3ScheduleController } from "./v3-schedule.controller";
+import { V4ScheduleController } from "./v4-schedule.controller";
 
 @Module({
 	imports: [forwardRef(() => UsersModule), FirebaseAdminModule],
@@ -14,6 +15,7 @@ import { V3ScheduleController } from "./v3-schedule.controller";
 	controllers: [
 		V2ScheduleController,
 		V3ScheduleController,
+		V4ScheduleController,
 		ScheduleReplacerController,
 	],
 	exports: [ScheduleService],

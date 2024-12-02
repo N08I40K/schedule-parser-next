@@ -26,7 +26,15 @@ export class LessonDto {
 				case V2LessonType.INDEPENDENT_WORK:
 				case V2LessonType.EXAM:
 				case V2LessonType.EXAM_WITH_GRADE:
+				case V2LessonType.EXAM_DEFAULT:
 					return V2LessonType.DEFAULT;
+				default:
+					return value;
+			}
+		} else if (options?.groups?.includes("v2")) {
+			switch (value as V2LessonType) {
+				case V2LessonType.EXAM_DEFAULT:
+					return V2LessonType.EXAM;
 				default:
 					return value;
 			}
@@ -72,6 +80,8 @@ export class LessonDto {
 				case V2LessonType.EXAM:
 					return `ЗАЧЕТ | ${value}`;
 				case V2LessonType.EXAM_WITH_GRADE:
+					return `ЗАЧЕТ С ОЦЕНКОЙ | ${value}`;
+				case V2LessonType.EXAM_DEFAULT:
 					return `ЗАЧЕТ С ОЦЕНКОЙ | ${value}`;
 				default:
 					return value;
