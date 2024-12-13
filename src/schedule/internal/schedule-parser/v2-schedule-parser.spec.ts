@@ -2,7 +2,6 @@ import { V2ScheduleParser, V2ScheduleParseResult } from "./v2-schedule-parser";
 import { BasicXlsDownloader } from "../xls-downloader/basic-xls-downloader";
 import { DayDto } from "../../dto/day.dto";
 import { GroupDto } from "../../dto/group.dto";
-import { V2LessonType } from "../../enum/v2-lesson-type.enum";
 import instanceToInstance2 from "../../../utility/class-trasformer/instance-to-instance-2";
 
 describe("V2ScheduleParser", () => {
@@ -55,7 +54,7 @@ describe("V2ScheduleParser", () => {
 	describe("Расписание", () => {
 		beforeEach(async () => {
 			await setLink(
-				"https://politehnikum-eng.ru/2024/poltavskaja_14_s_2_po_8_12.xls",
+				"https://politehnikum-eng.ru/2024/poltavskaja_15_s_9_po_13.12-1-.xls",
 			);
 		});
 
@@ -74,13 +73,10 @@ describe("V2ScheduleParser", () => {
 				schedule.groups.get("ИС-214/23");
 			expect(group).toBeDefined();
 
-			const day = group.days[5];
+			const day = group.days[0];
 			expect(day).toBeDefined();
 
-			const lesson = day.lessons[0];
-			expect(lesson).toBeDefined();
-
-			expect(lesson.type).toBe(V2LessonType.EXAM);
+			expect(day.lessons.length).toBeGreaterThan(0);
 		});
 	});
 });

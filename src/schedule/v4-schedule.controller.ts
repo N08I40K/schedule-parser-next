@@ -1,9 +1,11 @@
 import {
+	Body,
 	Controller,
 	Get,
 	HttpCode,
 	HttpStatus,
 	Param,
+	Patch,
 	UseGuards,
 	UseInterceptors,
 } from "@nestjs/common";
@@ -26,6 +28,8 @@ import { User } from "../users/entity/user.entity";
 import { GroupScheduleDto } from "./dto/group-schedule.dto";
 import { TeacherScheduleDto } from "./dto/teacher-schedule.dto";
 import instanceToInstance2 from "../utility/class-trasformer/instance-to-instance-2";
+import { CacheStatusDto } from "./dto/cache-status.dto";
+import { UpdateDownloadUrlDto } from "./dto/update-download-url.dto";
 
 @ApiTags("v4/schedule")
 @ApiBearerAuth()
@@ -101,5 +105,24 @@ export class V4ScheduleController {
 				groups: ["v3"],
 			}),
 		);
+	}
+
+	@ApiOperation({ summary: "Обновление основной страницы политехникума" })
+	@ApiResponse({
+		status: HttpStatus.OK,
+		description: "Данные обновлены успешно",
+		type: CacheStatusDto,
+	})
+	@ApiResponse({
+		status: HttpStatus.NOT_ACCEPTABLE,
+		description: "Передан некорректный код страницы",
+	})
+	@ResultDto(CacheStatusDto)
+	@HttpCode(HttpStatus.OK)
+	@Patch("update-download-url")
+	async updateDownloadUrl(
+		@Body() reqDto: UpdateDownloadUrlDto,
+	): Promise<CacheStatusDto> {
+		return await this.scheduleService.updateDownloadUrl(reqDto.url);
 	}
 }

@@ -1,5 +1,4 @@
 import {
-	Body,
 	Controller,
 	Get,
 	HttpCode,
@@ -26,7 +25,6 @@ import { CacheInterceptor, CacheKey } from "@nestjs/cache-manager";
 import { UserRole } from "../users/user-role.enum";
 import { User } from "../users/entity/user.entity";
 import { CacheStatusDto } from "./dto/cache-status.dto";
-import { UpdateDownloadUrlDto } from "./dto/update-download-url.dto";
 import { GroupScheduleDto } from "./dto/group-schedule.dto";
 import { ScheduleGroupNamesDto } from "./dto/schedule-group-names.dto";
 import { TeacherScheduleDto } from "./dto/teacher-schedule.dto";
@@ -154,10 +152,8 @@ export class V2ScheduleController {
 	@ResultDto(CacheStatusDto)
 	@HttpCode(HttpStatus.OK)
 	@Patch("update-download-url")
-	async updateDownloadUrl(
-		@Body() reqDto: UpdateDownloadUrlDto,
-	): Promise<CacheStatusDto> {
-		return await this.scheduleService.updateDownloadUrl(reqDto.url);
+	async updateDownloadUrl(): Promise<CacheStatusDto> {
+		return this.scheduleService.getCacheStatus();
 	}
 
 	@ApiOperation({
